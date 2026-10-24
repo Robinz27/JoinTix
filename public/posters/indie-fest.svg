@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="0.6" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#bef264"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <circle cx="400" cy="610" r="170" fill="#fde68a"/>
+  <circle cx="400" cy="610" r="215" fill="#fde68a" opacity="0.25"/>
+  <path d="M0 790 Q150 700 330 770 T680 750 T800 730 L800 1000 L0 1000 Z" fill="#065f46"/>
+  <path d="M0 860 Q200 800 420 850 T800 820 L800 1000 L0 1000 Z" fill="#064e3b"/>
+  <g fill="#064e3b">
+    <rect x="110" y="640" width="50" height="150" rx="6"/>
+    <rect x="640" y="620" width="50" height="160" rx="6"/>
+  </g>
+  <g fill="#14b8a6">
+    <circle cx="135" cy="680" r="13"/><circle cx="135" cy="740" r="18"/>
+    <circle cx="665" cy="660" r="13"/><circle cx="665" cy="722" r="18"/>
+  </g>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" text-anchor="middle">
+    <text x="400" y="110" font-size="28" font-weight="700" fill="#064e3b" letter-spacing="5">OPEN-AIR MUSIC</text>
+    <text x="400" y="225" font-size="112" font-weight="800" fill="#ffffff">BANGKOK</text>
+    <text x="400" y="335" font-size="112" font-weight="800" fill="#ffffff">INDIE FEST</text>
+    <text x="400" y="400" font-size="32" font-weight="700" fill="#064e3b">9–10 ม.ค. 2570 · ลานกลางเมือง</text>
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c1d0c"/>
+      <stop offset="0.55" stop-color="#ea580c"/>
+      <stop offset="1" stop-color="#facc15"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <g stroke="#fff7ed" stroke-width="6" stroke-linecap="round" opacity="0.9">
+    <g transform="translate(400 690)">
+      <path d="M0 -150 L0 -75 M0 75 L0 150 M-150 0 L-75 0 M75 0 L150 0 M-106 -106 L-53 -53 M53 53 L106 106 M-106 106 L-53 53 M53 -53 L106 -106"/>
+    </g>
+    <g transform="translate(150 560) scale(0.55)">
+      <path d="M0 -150 L0 -75 M0 75 L0 150 M-150 0 L-75 0 M75 0 L150 0 M-106 -106 L-53 -53 M53 53 L106 106 M-106 106 L-53 53 M53 -53 L106 -106"/>
+    </g>
+    <g transform="translate(660 870) scale(0.45)">
+      <path d="M0 -150 L0 -75 M0 75 L0 150 M-150 0 L-75 0 M75 0 L150 0 M-106 -106 L-53 -53 M53 53 L106 106 M-106 106 L-53 53 M53 -53 L106 -106"/>
+    </g>
+  </g>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" fill="#ffffff" text-anchor="middle">
+    <text x="400" y="110" font-size="28" font-weight="700" letter-spacing="5" opacity="0.9">NEW YEAR'S EVE</text>
+    <text x="400" y="225" font-size="104" font-weight="800">COUNTDOWN</text>
+    <text x="400" y="345" font-size="124" font-weight="800">2027</text>
+    <text x="400" y="410" font-size="32" font-weight="600">31 ธ.ค. 2569 · ริมแม่น้ำเจ้าพระยา</text>
+  </g>
+</svg>

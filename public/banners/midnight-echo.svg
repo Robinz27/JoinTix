@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 600" width="1500" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e0b3b"/>
+      <stop offset="0.55" stop-color="#5b1a7a"/>
+      <stop offset="1" stop-color="#e0337a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.35" r="0.5">
+      <stop offset="0" stop-color="#ff9ad5" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ff9ad5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1500" height="600" fill="url(#bg)"/>
+  <rect width="1500" height="600" fill="url(#glow)"/>
+  <polygon points="1040,0 1080,0 1300,600 900,600" fill="url(#beam)" opacity="0.5"/>
+  <polygon points="1180,0 1210,0 1500,520 1500,600 1250,600" fill="url(#beam)" opacity="0.35"/>
+  <polygon points="900,0 930,0 760,600 560,600" fill="url(#beam)" opacity="0.3"/>
+  <g fill="#ffffff" opacity="0.9">
+    <circle cx="140" cy="90" r="2"/><circle cx="420" cy="60" r="1.5"/><circle cx="610" cy="130" r="2.5"/>
+    <circle cx="780" cy="50" r="1.5"/><circle cx="1350" cy="80" r="2"/><circle cx="1260" cy="170" r="1.5"/>
+  </g>
+  <path d="M0 600 L0 520 Q30 470 60 520 Q90 460 120 515 Q150 480 180 520 Q215 455 250 515 Q280 475 310 520 Q345 450 380 512 Q410 470 440 520 Q470 465 505 515 Q535 480 565 520 Q600 455 635 515 Q665 470 695 520 Q730 460 765 512 Q795 478 825 520 Q860 450 895 515 Q925 472 955 520 Q990 458 1025 515 Q1055 476 1085 520 Q1120 452 1155 515 Q1185 470 1215 520 Q1250 460 1285 515 Q1315 478 1345 520 Q1380 455 1415 515 Q1445 474 1475 520 L1500 520 L1500 600 Z" fill="#0b0414"/>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" fill="#ffffff">
+    <text x="90" y="150" font-size="28" font-weight="600" letter-spacing="6" opacity="0.85">JOINTIX PRESENTS</text>
+    <text x="90" y="255" font-size="104" font-weight="800">MIDNIGHT</text>
+    <text x="90" y="360" font-size="104" font-weight="800">ECHO LIVE</text>
+    <text x="94" y="425" font-size="38" font-weight="600" opacity="0.92">14 ธันวาคม 2569 · อิมแพ็ค อารีน่า</text>
+  </g>
+  <g transform="translate(1030 330)">
+    <rect width="360" height="110" rx="55" fill="#ffffff"/>
+    <text x="180" y="72" text-anchor="middle" font-family="'Segoe UI', Tahoma, sans-serif" font-size="44" font-weight="800" fill="#5b1a7a">PRE-SALE ฿1,800</text>
+  </g>
+</svg>

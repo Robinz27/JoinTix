@@ -214,6 +214,113 @@ body {
   animation: fade-in 0.14s ease-out;
 }
 
+/*
+  Event card (components/event-card.tsx), from next.js-shop's product card: on hover the border and
+  background brighten with a soft shadow, the poster zooms a touch, and one light sweep crosses the buy button
+*/
+.event-card {
+  background-color: var(--card);
+  border-color: var(--border);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.event-card:hover {
+  border-color: color-mix(in oklab, var(--foreground) 22%, var(--card));
+  background-color: color-mix(in oklab, var(--foreground) 3%, var(--card));
+  box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+.dark .event-card:hover {
+  box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+.event-poster {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.event-card:hover .event-poster {
+  transform: scale(1.04);
+}
+
+.btn-buy {
+  position: relative;
+  overflow: hidden;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  transition: background-color 0.2s ease;
+}
+.btn-buy:hover {
+  background: var(--primary-hover);
+}
+.btn-buy.is-disabled {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+}
+/* Dark buttons (light theme) get a white sweep, light buttons (dark theme) a faint grey one */
+.btn-buy::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  transform: translateX(-180%) skewX(-18deg);
+  pointer-events: none;
+}
+.dark .btn-buy::after {
+  background: linear-gradient(100deg, transparent, rgb(0 0 0 / 0.16), transparent);
+}
+.event-card:hover .btn-buy:not(.is-disabled)::after {
+  animation: btn-buy-shine 0.85s ease-out;
+}
+@keyframes btn-buy-shine {
+  to {
+    transform: translateX(360%) skewX(-18deg);
+  }
+}
+
+/* Status badge on a poster; sits on pictures, so it gets its own backdrop */
+.stock-badge {
+  --tone: #22c55e;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent);
+  background: color-mix(in srgb, var(--tone) 22%, rgb(0 0 0 / 0.55));
+  color: color-mix(in srgb, var(--tone) 70%, #fff);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.stock-badge[data-tone="hot"] { --tone: #f97316; }
+.stock-badge[data-tone="soon"] { --tone: #38bdf8; }
+.stock-badge[data-tone="out"] { --tone: #ef4444; }
+.stock-badge-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+/* A soft ring pulses out of the dot while tickets are on sale */
+.stock-badge:is([data-tone="in"], [data-tone="hot"]) .stock-badge-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: stock-pulse 2s ease-out infinite;
+}
+@keyframes stock-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
 /* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
 .menu-drop {
   animation: menu-drop 0.18s ease-out;
@@ -279,8 +386,13 @@ dialog.search-dialog::backdrop {
   .stagger > *,
   .stagger-item,
   .text-animate-piece,
-  .hint-pop {
+  .hint-pop,
+  .stock-badge-dot::after,
+  .event-card:hover .btn-buy::after {
     animation: none;
+  }
+  .event-card:hover .event-poster {
+    transform: none;
   }
   .text-shimmer {
     animation: none;

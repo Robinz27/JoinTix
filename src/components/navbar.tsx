@@ -10,7 +10,6 @@ import {
   Login03Icon,
   Menu01Icon,
   Search01Icon,
-  Ticket01Icon,
   Ticket02Icon,
   UserAdd01Icon,
 } from "@hugeicons/core-free-icons";
@@ -111,8 +110,7 @@ export function Navbar() {
             scrolled ? "h-12 pr-1.5" : "h-14"
           }`}
         >
-          <Link href="/" aria-label="JoinTix หน้าแรก" className="flex min-w-0 items-center gap-2 text-foreground">
-            <Icon icon={Ticket01Icon} strokeWidth={2} className={`shrink-0 transition-all duration-300 ${scrolled ? "size-5" : "size-6"}`} />
+          <Link href="/" aria-label="JoinTix หน้าแรก" className="flex min-w-0 items-center text-foreground">
             <span className={`font-semibold transition-all duration-300 ${scrolled ? "text-base" : "text-base min-[400px]:text-lg"}`}>
               JoinTix
             </span>

@@ -1,12 +1,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { InformationCircleIcon, Leaf01Icon } from "@hugeicons/core-free-icons";
+import { InformationCircleIcon, Leaf01Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { BannerCarousel } from "@/components/banner-carousel";
 import { DbStatusDot, DbStatusDotFallback } from "@/components/db-status";
 import { DotMatrixLoader } from "@/components/dot-matrix-loader";
+import { EventCard } from "@/components/event-card";
 import { HeroVeil } from "@/components/hero-veil";
 import { Icon } from "@/components/icon";
+import { SectionHeader } from "@/components/section-header";
 import { TextAnimate, animateSteps } from "@/components/text-animate";
 import { Hint } from "@/components/ui/hint";
+import { BANNERS } from "@/lib/banners";
+import { FEATURED_EVENTS } from "@/lib/events";
 
 const WELCOME = "ยินดีต้อนรับสู่";
 const SITE_NAME = "JoinTix";
@@ -20,7 +25,7 @@ const BUTTONS_AT = DESCRIBE_AT + Math.min(animateSteps(DESCRIPTION, "word"), 40)
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col pb-16">
-      <section className="relative isolate flex justify-center px-3 pt-[50px] pb-10 sm:pb-14 lg:pb-16">
+      <section className="relative isolate flex justify-center px-3 pt-[50px] pb-6 sm:pb-8">
         <HeroVeil />
         <div className="stagger w-full max-w-5xl text-center">
           <div className="mb-10 flex justify-center">
@@ -30,7 +35,7 @@ export default function Home() {
                   <DbStatusDot />
                 </Suspense>
               </span>
-              <p className="text-shimmer">พร้อมให้บริการแล้วนะ</p>
+              <p className="text-shimmer">ระบบพร้อมเปิดจองบัตรแล้ว</p>
               <div className="mx-2 h-[10px] w-px bg-border" />
               <DotMatrixLoader />
             </div>
@@ -71,6 +76,21 @@ export default function Home() {
               </Link>
             </Hint>
           </div>
+        </div>
+      </section>
+
+      <BannerCarousel banners={BANNERS} />
+
+      <section className="flex justify-center px-3">
+        <div className="w-full max-w-5xl">
+          <SectionHeader icon={SparklesIcon} title="อีเวนต์แนะนำ" subtitle="Recommended events" href="/events" />
+          <ul className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+            {FEATURED_EVENTS.map((event) => (
+              <li key={event.id}>
+                <EventCard event={event} />
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </main>

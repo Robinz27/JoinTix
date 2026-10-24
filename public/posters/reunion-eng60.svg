@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1d3a"/>
+      <stop offset="1" stop-color="#1f3f73"/>
+    </linearGradient>
+    <radialGradient id="gold" cx="0.5" cy="0.68" r="0.42">
+      <stop offset="0" stop-color="#f7c96b" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#f7c96b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <rect width="800" height="1000" fill="url(#gold)"/>
+  <g fill="#f7c96b">
+    <circle cx="120" cy="480" r="10" opacity="0.8"/><circle cx="680" cy="520" r="8" opacity="0.7"/>
+    <circle cx="200" cy="860" r="12" opacity="0.6"/><circle cx="620" cy="880" r="7" opacity="0.7"/>
+    <circle cx="90" cy="700" r="6" opacity="0.8"/><circle cx="720" cy="720" r="9" opacity="0.6"/>
+  </g>
+  <g transform="translate(300 560)" fill="none" stroke="#f7c96b" stroke-width="12" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M0 0 L80 0 L70 160 Q40 186 10 160 Z"/>
+    <path d="M40 186 L40 260 M0 260 L80 260"/>
+    <path d="M130 30 L210 30 L200 190 Q170 216 140 190 Z"/>
+    <path d="M170 216 L170 290 M130 290 L210 290"/>
+  </g>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" text-anchor="middle">
+    <text x="400" y="120" font-size="32" font-weight="600" fill="#f7c96b">คืนสู่เหย้า</text>
+    <text x="400" y="235" font-size="104" font-weight="800" fill="#ffffff">งานเลี้ยงรุ่น</text>
+    <text x="400" y="350" font-size="104" font-weight="800" fill="#ffffff">วิศวะ 60</text>
+    <text x="400" y="420" font-size="32" font-weight="600" fill="#ffffff" opacity="0.9">27 ธ.ค. 2569 · โรงแรมริมน้ำ</text>
+  </g>
+</svg>

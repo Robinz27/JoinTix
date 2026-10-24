@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e0b3b"/>
+      <stop offset="0.6" stop-color="#5b1a7a"/>
+      <stop offset="1" stop-color="#e0337a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.45">
+      <stop offset="0" stop-color="#ff9ad5" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ff9ad5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <rect width="800" height="1000" fill="url(#glow)"/>
+  <polygon points="380,380 420,380 640,1000 160,1000" fill="url(#beam)" opacity="0.55"/>
+  <polygon points="150,380 175,380 60,1000 -120,1000" fill="url(#beam)" opacity="0.35"/>
+  <polygon points="625,380 650,380 920,1000 740,1000" fill="url(#beam)" opacity="0.35"/>
+  <path d="M0 1000 L0 900 Q25 860 50 900 Q80 845 110 895 Q140 862 170 900 Q200 850 230 895 Q260 865 290 900 Q320 845 350 895 Q380 860 410 900 Q440 848 470 895 Q500 866 530 900 Q560 850 590 895 Q620 862 650 900 Q680 846 710 895 Q740 864 770 900 L800 900 L800 1000 Z" fill="#0b0414"/>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" fill="#ffffff" text-anchor="middle">
+    <text x="400" y="110" font-size="26" font-weight="600" letter-spacing="6" opacity="0.85">JOINTIX PRESENTS</text>
+    <text x="400" y="225" font-size="112" font-weight="800">MIDNIGHT</text>
+    <text x="400" y="335" font-size="112" font-weight="800">ECHO LIVE</text>
+    <text x="400" y="395" font-size="32" font-weight="600" opacity="0.9">14 ธ.ค. 2569 · อิมแพ็ค อารีน่า</text>
+  </g>
+</svg>

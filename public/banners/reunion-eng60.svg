@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 600" width="1500" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1d3a"/>
+      <stop offset="1" stop-color="#1f3f73"/>
+    </linearGradient>
+    <radialGradient id="gold" cx="0.78" cy="0.5" r="0.45">
+      <stop offset="0" stop-color="#f7c96b" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#f7c96b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1500" height="600" fill="url(#bg)"/>
+  <rect width="1500" height="600" fill="url(#gold)"/>
+  <g fill="#f7c96b">
+    <circle cx="1120" cy="120" r="10" opacity="0.8"/><circle cx="1240" cy="80" r="6" opacity="0.7"/>
+    <circle cx="1350" cy="200" r="12" opacity="0.6"/><circle cx="980" cy="210" r="7" opacity="0.7"/>
+    <circle cx="1300" cy="450" r="9" opacity="0.6"/><circle cx="1050" cy="480" r="5" opacity="0.8"/>
+    <rect x="1180" y="300" width="14" height="28" rx="3" transform="rotate(25 1187 314)" opacity="0.8"/>
+    <rect x="1010" y="350" width="12" height="24" rx="3" transform="rotate(-30 1016 362)" opacity="0.7"/>
+  </g>
+  <g transform="translate(1110 250)" fill="none" stroke="#f7c96b" stroke-width="10" stroke-linejoin="round">
+    <path d="M0 0 L60 0 L52 120 Q30 140 8 120 Z"/>
+    <path d="M30 140 L30 200 M0 200 L60 200"/>
+    <path d="M110 20 L170 20 L162 140 Q140 160 118 140 Z"/>
+    <path d="M140 160 L140 220 M110 220 L170 220"/>
+  </g>
+  <g font-family="'Segoe UI', Tahoma, sans-serif" fill="#ffffff">
+    <text x="90" y="150" font-size="30" font-weight="600" opacity="0.8" fill="#f7c96b">คืนสู่เหย้า</text>
+    <text x="90" y="260" font-size="96" font-weight="800">งานเลี้ยงรุ่น</text>
+    <text x="90" y="365" font-size="96" font-weight="800">วิศวะ รุ่น 60</text>
+    <text x="94" y="430" font-size="36" font-weight="600" opacity="0.9">27 ธันวาคม 2569 · โรงแรมริมน้ำ</text>
+  </g>
+  <g transform="translate(90 465)">
+    <rect width="300" height="80" rx="40" fill="#f7c96b"/>
+    <text x="150" y="53" text-anchor="middle" font-family="'Segoe UI', Tahoma, sans-serif" font-size="34" font-weight="800" fill="#0b1d3a">โต๊ะละ ฿12,000</text>
+  </g>
+</svg>
