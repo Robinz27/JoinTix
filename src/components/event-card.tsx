@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Calendar03Icon, Location01Icon, Ticket02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
+import { FadeImage } from "@/components/ui/fade-image";
 import type { EventSummary } from "@/lib/events";
 
 // Always Thai time, so the server and every visitor see the same date
@@ -21,7 +21,7 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
       <div className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-secondary">
         {/* The poster links to the event too; tabIndex -1 so keyboard users stop once, on the button */}
         <Link href={event.href} tabIndex={-1} aria-hidden="true" className="relative block size-full">
-          <Image
+          <FadeImage
             src={event.poster}
             alt=""
             fill

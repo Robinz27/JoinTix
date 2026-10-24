@@ -85,8 +85,9 @@ export default function Home() {
         <div className="w-full max-w-5xl">
           <SectionHeader icon={SparklesIcon} title="อีเวนต์แนะนำ" subtitle="Recommended events" href="/events" />
           <ul className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
-            {FEATURED_EVENTS.map((event) => (
-              <li key={event.id}>
+            {FEATURED_EVENTS.map((event, i) => (
+              // Rises in on scroll, each card a step after the one before
+              <li key={event.id} className="reveal" style={{ "--i": i } as React.CSSProperties}>
                 <EventCard event={event} />
               </li>
             ))}

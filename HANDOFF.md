@@ -28,6 +28,7 @@
 | Database | **Neon** (Serverless **PostgreSQL** 18, region Singapore) | เปลี่ยนจาก PlanetScale MySQL ใน spec แรก ดูเหตุผลข้อ 2.1 |
 | ORM | **Drizzle ORM** + `@neondatabase/serverless` (HTTP driver) | |
 | Cache / Lock / Queue | **Upstash Redis** | ⏳ ยังไม่ได้ติดตั้ง |
+| Auth (สมัคร / ล็อกอิน) | **Better Auth** + Drizzle adapter (อีเมล + รหัสผ่าน, เก็บ session ใน Postgres) | ตั้งค่าที่ `src/lib/auth.ts` ต้องมี `BETTER_AUTH_SECRET` และ `BETTER_AUTH_URL` ใน `.env.local` |
 | UI theme / icons | ธีมขาวดำ + ฟอนต์ Google Sans Flex / Noto Sans Thai ยกมาจากโปรเจกต์ next.js-shop, ไอคอน **Hugeicons** | ค่าสีอยู่ใน `src/app/globals.css` ใช้ class อย่าง `bg-card`, `text-muted-foreground` ห้ามใส่สี hex ตรงๆ |
 
 ### 2.1 ทำไมใช้ Postgres (Neon) แทน PlanetScale MySQL
@@ -45,7 +46,10 @@
 |---|---|
 | ติดตั้ง Next.js + Drizzle + Neon | ✅ เสร็จ |
 | เชื่อมต่อฐานข้อมูล (`/api/health`) | ✅ ทดสอบผ่าน |
-| ออกแบบ DB schema | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** |
+| ตารางระบบสมาชิก (`user`, `session`, `account`, `verification`) | ✅ สร้างใน Neon แล้ว (migration `drizzle/0000_auth.sql`) |
+| ออกแบบ DB schema ส่วนอีเวนต์ / ที่นั่ง / ตั๋ว / order | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ตาราง events ฯลฯ ให้อ้าง `user.id` ที่เป็น text) |
+| ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: ยืนยันอีเมล, หน้า `/profile` `/tickets` |
+| ลืมรหัสผ่าน | ✅ เสร็จ: `/forgot-password` ส่งลิงก์ทางอีเมล (Resend) → `/reset-password` ตั้งรหัสใหม่ ลิงก์ใช้ได้ครั้งเดียว 1 ชม. และออกจากระบบทุกอุปกรณ์ ถ้ายังไม่ใส่ `RESEND_API_KEY` ลิงก์จะไปโผล่ใน terminal ของ server แทน |
 | Upstash Redis (lock / rate limit / queue) | ⏳ ยังไม่เริ่ม |
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
 | ระบบชำระเงิน | ⏳ ยังไม่เริ่ม |
@@ -53,8 +57,9 @@
 | หน้าแรก: ส่วน hero (พื้นหลัง veil เคลื่อนไหว, จุดสถานะ DB, ข้อความค่อยๆ ขึ้น) | ✅ เสร็จ (ยกมาจาก next.js-shop) |
 | หน้าแรก: แบนเนอร์อีเวนต์แบบสไลด์ (ขอบโค้ง, ปุ่มลูกศร, จุดบอกตำแหน่ง, เลื่อนเองทุก 5 วิ) | ✅ เสร็จ แต่ข้อมูลยังเป็นแบนเนอร์ตัวอย่างใน `src/lib/banners.ts` รูปใน `public/banners/` |
 | หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` รูปใน `public/posters/` |
-| Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix ตัวใหญ่จางๆ สว่างตามเมาส์) | ✅ เสร็จ (ยกมาจาก next.js-shop) ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
-| หน้า `/events`, `/docs`, `/login`, `/register` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
+| Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix แบบ Aceternity Text Hover Effect: เส้นขอบวาดเองตอนเลื่อนถึง + สีรุ้งตามเมาส์) | ✅ เสร็จ ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
+| Animation + skeleton loading | ✅ หน้าแรก / login / register / ลืมรหัสผ่าน มี `loading.tsx` เป็น skeleton, รูปค่อยๆ เฟดขึ้นบน skeleton, การ์ดและ footer ลอยขึ้นตอนเลื่อน (`.reveal`) หน้าใหม่ให้เพิ่ม `loading.tsx` ด้วย (ดูหัว `src/components/ui/skeleton.tsx`) |
+| หน้า `/events`, `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
 
@@ -111,6 +116,11 @@ npm ci
 
 ```
 DATABASE_URL='<connection string ของ Neon>'
+BETTER_AUTH_SECRET='<สุ่มยาว 32 ไบต์ เช่นจาก openssl rand -base64 32>'
+BETTER_AUTH_URL='http://localhost:3000'
+# ไม่บังคับ: ส่งอีเมลลืมรหัสผ่านจริง (ไม่ใส่ = แสดงลิงก์ใน terminal แทน)
+RESEND_API_KEY='re_...'
+EMAIL_FROM='JoinTix <onboarding@resend.dev>'
 ```
 
 > `.env.local` ถูก git ignore ไว้ จะไม่ขึ้น repo — อย่าเปลี่ยนชื่อไฟล์เป็นอย่างอื่น
@@ -126,7 +136,7 @@ DATABASE_URL='<connection string ของ Neon>'
 |---|---|
 | `npm run dev` | เปิด dev server |
 | `npm run dev:fresh` | ล้าง cache `.next` แล้วเปิด dev server (ใช้เมื่อหน้าเว็บค้างของเก่า / style ไม่ขึ้น) |
-| `npm run build` | build production (ไม่ต้องมี `DATABASE_URL` ก็ build ได้) |
+| `npm run build` | build production (ต้องมี `.env.local` เพราะระบบ auth ต่อ DB ตอนโหลด) |
 | `npm run lint` | ตรวจโค้ด |
 | `npm run db:generate` | สร้างไฟล์ migration จาก `src/db/schema.ts` ลงโฟลเดอร์ `drizzle/` |
 | `npm run db:migrate` | รัน migration กับ DB |
@@ -158,14 +168,30 @@ src/
     banner-carousel.tsx   ← แบนเนอร์สไลด์ (Embla)
     section-header.tsx    ← หัวข้อของแต่ละส่วนในหน้าแรก (ไอคอน + ชื่อ + ปุ่มดูทั้งหมด)
     event-card.tsx        ← การ์ดอีเวนต์ (ใช้ class .event-card / .btn-buy ใน globals.css)    site-footer.tsx       ← footer ทุกหน้า (ลิงก์อยู่ในตัวแปร GROUPS)
-    footer-wordmark.tsx   ← ชื่อเว็บตัวใหญ่ท้าย footer
+    text-hover-effect.tsx ← ชื่อเว็บตัวใหญ่ท้าย footer (แบบ Aceternity ทำเองด้วย SVG ไม่ใช้ library)
+    skeletons.tsx         ← skeleton ของแต่ละหน้า/ส่วน (Hero, Banner, Events, AuthCard)
+    ui/skeleton.tsx       ← Skeleton / SkeletonText / LoadingRegion
+    ui/fade-image.tsx     ← รูปที่เฟดขึ้นเมื่อโหลดเสร็จ มี skeleton ระหว่างรอ
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
     banners.ts            ← รายการแบนเนอร์ (ตัวอย่าง รอดึงจาก DB) — รูปขนาด 5:2 เช่น 1500×600
     events.ts             ← อีเวนต์แนะนำ (ตัวอย่าง รอดึงจาก DB) — โปสเตอร์ขนาด 4:5 เช่น 800×1000
   db/
     index.ts              ← getDb() สร้าง connection ตอนเรียกใช้ครั้งแรก
-    schema.ts             ← ตาราง Drizzle (ยังว่าง รอออกแบบ)
+    schema.ts             ← ตาราง Drizzle (ตอนนี้มีแค่ตารางของ Better Auth)
+  lib/
+    auth.ts               ← ตั้งค่า Better Auth (ฝั่ง server)
+    auth-client.ts        ← Better Auth ฝั่งเบราว์เซอร์ (navbar ใช้อ่าน session)
+    session.ts            ← getSession() สำหรับ Server Component / safeNext() กัน ?next= พาออกนอกเว็บ
+    mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมลรีเซ็ตรหัสผ่าน
+  app/
+    actions/auth.ts       ← server actions: signIn, signUp, signOut (ข้อความ error ภาษาไทย)
+    api/auth/[...all]/    ← endpoint ของ Better Auth
+    login/, register/     ← หน้าเข้าสู่ระบบ / สมัครสมาชิก
+    forgot-password/, reset-password/ ← ขอลิงก์ลืมรหัสผ่าน / ตั้งรหัสใหม่
+  components/
+    auth/                 ← ฟอร์มล็อกอิน / สมัคร (สไตล์จาก next.js-shop)
+    account-menu.tsx      ← เมนูบัญชีใน navbar + ปุ่มออกจากระบบ
 drizzle.config.ts         ← อ่าน DATABASE_URL จาก .env.local
 drizzle/                  ← ไฟล์ migration (จะถูกสร้างเมื่อรัน db:generate)
 setup.cmd                 ← ดับเบิลคลิกติดตั้งบน Windows (เรียก scripts/setup.ps1)
@@ -227,7 +253,7 @@ scripts/setup.sh          ← สคริปต์ติดตั้งสำ�
 
 ## 8. งานถัดไป (ยังไม่มีใครรับ)
 
-1. ออกแบบ schema: Users, Events, Seats, Tickets, Orders, Payments ← **ทำก่อน**
+1. ออกแบบ schema: Events, Seats, Tickets, Orders, Payments ← **ทำก่อน** (Users มีแล้วจาก Better Auth)
 2. ติดตั้ง Upstash Redis + เขียน Lua script ล็อกที่นั่ง
 3. Route Handler กดบัตร: เช็กคิว → ล็อก → สร้าง order
 4. หน้า UI: รายการอีเวนต์, ผังที่นั่ง, checkout
@@ -242,7 +268,7 @@ scripts/setup.sh          ← สคริปต์ติดตั้งสำ�
 
 1. อ่านไฟล์นี้ทั้งไฟล์ก่อนแก้โค้ดใดๆ
 2. ทำตามข้อตกลงในข้อ 6 และหลักการในข้อ 7 — ถ้าคำสั่งผู้ใช้ขัดกับไฟล์นี้ ให้ทักผู้ใช้ก่อน อย่าเดาเอง
-3. **ห้ามเขียนตารางใน `src/db/schema.ts` จนกว่าสถานะในข้อ 3 จะเปลี่ยนเป็น "ออกแบบเสร็จ"** เว้นแต่ผู้ใช้สั่งชัดเจน
+3. **ห้ามเขียนตารางใหม่ใน `src/db/schema.ts` จนกว่าสถานะในข้อ 3 จะเปลี่ยนเป็น "ออกแบบเสร็จ"** เว้นแต่ผู้ใช้สั่งชัดเจน (ตารางของ Better Auth ที่มีอยู่ ห้ามแก้ชื่อหรือลบคอลัมน์ เพราะ Better Auth อ้างถึงตรงๆ)
 4. ห้ามรัน `db:push`, `db:migrate`, หรือคำสั่งที่ลบ/แก้ข้อมูลใน DB โดยไม่ถามผู้ใช้ก่อน (DB ใช้ร่วมกันทั้งกลุ่ม)
 5. ห้ามเปลี่ยน stack ในข้อ 2 หรือเพิ่ม dependency ใหญ่ (ORM, auth, UI framework) โดยไม่ถาม
 6. ใช้ Next.js 16 — อ่านเอกสารใน `node_modules/next/dist/docs/` แทนการเดาจากความจำ

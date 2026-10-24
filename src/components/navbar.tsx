@@ -13,9 +13,11 @@ import {
   Ticket02Icon,
   UserAdd01Icon,
 } from "@hugeicons/core-free-icons";
+import { AccountDropdown, AccountRows, AccountSummary } from "@/components/account-menu";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { SearchDialog } from "@/components/search-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { authClient } from "@/lib/auth-client";
 
 type NavLink = { href: string; label: string; icon: IconSvgElement };
 
@@ -43,6 +45,13 @@ export function Navbar() {
   const [menuClosing, setMenuClosing] = useState(false);
   const closeTimer = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Read in the browser so every page stays static; asked again after each navigation, since signing in
+  // or out happens in a server action the session store doesn't see
+  const { data: session, isPending: sessionPending, refetch } = authClient.useSession();
+  const account = session?.user ?? null;
+  useEffect(() => {
+    refetch();
+  }, [pathname, refetch]);
 
   const closeMenu = useCallback(() => {
     setMenuOpen((open) => {
@@ -156,14 +165,23 @@ export function Navbar() {
               <Icon icon={Search01Icon} className="size-4" />
             </button>
             <ThemeToggle />
-            <Link href="/login" className={outlineButton}>
-              <Icon icon={Login03Icon} className="size-4" />
-              เข้าสู่ระบบ
-            </Link>
-            <Link href="/register" className={primaryButton}>
-              <Icon icon={UserAdd01Icon} className="size-4" />
-              สมัครสมาชิก
-            </Link>
+            {sessionPending ? (
+              // Holds the place while the session loads, so the buttons don't flash in and out
+              <span aria-hidden="true" className="skeleton h-9 w-56 rounded-full" />
+            ) : account ? (
+              <AccountDropdown account={account} />
+            ) : (
+              <>
+                <Link href="/login" className={outlineButton}>
+                  <Icon icon={Login03Icon} className="size-4" />
+                  เข้าสู่ระบบ
+                </Link>
+                <Link href="/register" className={primaryButton}>
+                  <Icon icon={UserAdd01Icon} className="size-4" />
+                  สมัครสมาชิก
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 min-[400px]:gap-2 md:hidden">
@@ -214,16 +232,23 @@ export function Navbar() {
               className="menu-row min-[400px]:hidden"
             />
           </div>
-          <div className="menu-row flex gap-2 border-t border-border pt-2" style={{ "--i": LINKS.length + 1 } as React.CSSProperties}>
-            <Link href="/login" onClick={closeMenu} className={`${outlineButton} flex-1 justify-center`}>
-              <Icon icon={Login03Icon} className="size-4" />
-              เข้าสู่ระบบ
-            </Link>
-            <Link href="/register" onClick={closeMenu} className={`${primaryButton} flex-1 justify-center`}>
-              <Icon icon={UserAdd01Icon} className="size-4" />
-              สมัครสมาชิก
-            </Link>
-          </div>
+          {account ? (
+            <div className="menu-row border-t border-border pt-2" style={{ "--i": LINKS.length + 1 } as React.CSSProperties}>
+              <AccountSummary account={account} />
+              <AccountRows onNavigate={closeMenu} />
+            </div>
+          ) : (
+            <div className="menu-row flex gap-2 border-t border-border pt-2" style={{ "--i": LINKS.length + 1 } as React.CSSProperties}>
+              <Link href="/login" onClick={closeMenu} className={`${outlineButton} flex-1 justify-center`}>
+                <Icon icon={Login03Icon} className="size-4" />
+                เข้าสู่ระบบ
+              </Link>
+              <Link href="/register" onClick={closeMenu} className={`${primaryButton} flex-1 justify-center`}>
+                <Icon icon={UserAdd01Icon} className="size-4" />
+                สมัครสมาชิก
+              </Link>
+            </div>
+          )}
         </div>
       )}
       <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
