@@ -167,7 +167,7 @@ export function Navbar() {
             <ThemeToggle />
             {sessionPending ? (
               // Holds the place while the session loads, so the buttons don't flash in and out
-              <span aria-hidden="true" className="h-9 w-56 animate-pulse rounded-full bg-secondary/60" />
+              <span aria-hidden="true" className="skeleton h-9 w-56 rounded-full" />
             ) : account ? (
               <AccountDropdown account={account} />
             ) : (

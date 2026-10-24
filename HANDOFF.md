@@ -57,7 +57,8 @@
 | หน้าแรก: ส่วน hero (พื้นหลัง veil เคลื่อนไหว, จุดสถานะ DB, ข้อความค่อยๆ ขึ้น) | ✅ เสร็จ (ยกมาจาก next.js-shop) |
 | หน้าแรก: แบนเนอร์อีเวนต์แบบสไลด์ (ขอบโค้ง, ปุ่มลูกศร, จุดบอกตำแหน่ง, เลื่อนเองทุก 5 วิ) | ✅ เสร็จ แต่ข้อมูลยังเป็นแบนเนอร์ตัวอย่างใน `src/lib/banners.ts` รูปใน `public/banners/` |
 | หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` รูปใน `public/posters/` |
-| Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix ตัวใหญ่จางๆ สว่างตามเมาส์) | ✅ เสร็จ (ยกมาจาก next.js-shop) ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
+| Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix แบบ Aceternity Text Hover Effect: เส้นขอบวาดเองตอนเลื่อนถึง + สีรุ้งตามเมาส์) | ✅ เสร็จ ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
+| Animation + skeleton loading | ✅ หน้าแรก / login / register / ลืมรหัสผ่าน มี `loading.tsx` เป็น skeleton, รูปค่อยๆ เฟดขึ้นบน skeleton, การ์ดและ footer ลอยขึ้นตอนเลื่อน (`.reveal`) หน้าใหม่ให้เพิ่ม `loading.tsx` ด้วย (ดูหัว `src/components/ui/skeleton.tsx`) |
 | หน้า `/events`, `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
@@ -167,7 +168,10 @@ src/
     banner-carousel.tsx   ← แบนเนอร์สไลด์ (Embla)
     section-header.tsx    ← หัวข้อของแต่ละส่วนในหน้าแรก (ไอคอน + ชื่อ + ปุ่มดูทั้งหมด)
     event-card.tsx        ← การ์ดอีเวนต์ (ใช้ class .event-card / .btn-buy ใน globals.css)    site-footer.tsx       ← footer ทุกหน้า (ลิงก์อยู่ในตัวแปร GROUPS)
-    footer-wordmark.tsx   ← ชื่อเว็บตัวใหญ่ท้าย footer
+    text-hover-effect.tsx ← ชื่อเว็บตัวใหญ่ท้าย footer (แบบ Aceternity ทำเองด้วย SVG ไม่ใช้ library)
+    skeletons.tsx         ← skeleton ของแต่ละหน้า/ส่วน (Hero, Banner, Events, AuthCard)
+    ui/skeleton.tsx       ← Skeleton / SkeletonText / LoadingRegion
+    ui/fade-image.tsx     ← รูปที่เฟดขึ้นเมื่อโหลดเสร็จ มี skeleton ระหว่างรอ
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
     banners.ts            ← รายการแบนเนอร์ (ตัวอย่าง รอดึงจาก DB) — รูปขนาด 5:2 เช่น 1500×600

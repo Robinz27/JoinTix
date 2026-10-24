@@ -11,8 +11,8 @@ import {
   Ticket02Icon,
   UserAdd01Icon,
 } from "@hugeicons/core-free-icons";
-import { FooterWordmark } from "@/components/footer-wordmark";
 import { Icon, type IconSvgElement } from "@/components/icon";
+import { TextHoverEffect } from "@/components/text-hover-effect";
 
 // Site footer, from next.js-shop (after Aceternity's "simple footer with four grids"): name and copyright
 // on the left, link groups on the right, and the name as a big faded wordmark underneath.
@@ -53,7 +53,7 @@ export function SiteFooter() {
   return (
     <footer className="relative overflow-hidden border-t border-border bg-background">
       <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 pt-12 pb-6 sm:px-6 md:flex-row md:justify-between md:pt-16 xl:max-w-6xl">
-        <div className="max-w-sm space-y-3">
+        <div className="reveal max-w-sm space-y-3">
           <Link href="/" className="inline-flex font-semibold text-foreground">
             {SITE_NAME}
           </Link>
@@ -64,8 +64,8 @@ export function SiteFooter() {
         </div>
 
         <nav aria-label="ลิงก์ท้ายเว็บ" className="grid grid-cols-2 gap-x-10 gap-y-8 sm:gap-x-16 lg:grid-cols-3 lg:gap-x-12">
-          {GROUPS.map((group) => (
-            <div key={group.title}>
+          {GROUPS.map((group, i) => (
+            <div key={group.title} className="reveal" style={{ "--i": i + 1 } as React.CSSProperties}>
               <h2 className="mb-3 text-sm font-semibold text-foreground">{group.title}</h2>
               <ul className="space-y-2.5">
                 {group.links.map((link) => (
@@ -87,7 +87,9 @@ export function SiteFooter() {
         </nav>
       </div>
 
-      <FooterWordmark text={SITE_NAME} />
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 xl:max-w-6xl">
+        <TextHoverEffect text={SITE_NAME} />
+      </div>
     </footer>
   );
 }

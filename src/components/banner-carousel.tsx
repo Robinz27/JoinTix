@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
+import { FadeImage } from "@/components/ui/fade-image";
 import type { Banner } from "@/lib/banners";
 
 // Advance every 5s; pauses while the pointer is over it and restarts the countdown after the visitor moves it
@@ -80,7 +80,7 @@ export function BannerCarousel({ banners }: { banners: Banner[] }) {
                 className="min-w-0 shrink-0 grow-0 basis-full"
               >
                 <Link href={banner.href} className="relative block aspect-[5/2] w-full bg-card" draggable={false}>
-                  <Image
+                  <FadeImage
                     src={banner.src}
                     alt={banner.title}
                     fill

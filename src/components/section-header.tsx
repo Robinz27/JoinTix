@@ -15,7 +15,7 @@ export function SectionHeader({
   href?: string;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-3 sm:mb-4">
+    <div className="reveal mb-3 flex items-center gap-3 sm:mb-4">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-foreground sm:size-10">
         <Icon icon={icon} className="size-[18px] sm:size-5" />
       </span>

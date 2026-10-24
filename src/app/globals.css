@@ -275,54 +275,85 @@ body {
 }
 
 /*
-  Footer wordmark (components/footer-wordmark.tsx): the site name as faded text that melts into the page at
-  the bottom (gradient clipped to the letters). Rises in as it scrolls into view (CSS only; browsers
-  without scroll-driven animations just show it).
+  Text hover effect (components/text-hover-effect.tsx): the outline is one long dash pushed off the
+  letters, then slid back on once the word is on screen, so it looks drawn by hand.
 */
-.footer-wordmark,
-.footer-wordmark-glow {
-  padding-top: 0.1em;
-  background-clip: text;
-  color: transparent;
+.text-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
 }
-.footer-wordmark {
-  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 12%, transparent) 20%, transparent 95%);
+.text-draw.is-drawn {
+  animation: text-draw 4s ease-in-out forwards;
 }
-.dark .footer-wordmark {
-  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 20%, transparent) 20%, transparent 95%);
-}
-/* The glow: a brighter copy of the letters, visible only in a soft circle around the mouse */
-.footer-wordmark-glow {
-  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 85%, transparent), color-mix(in oklab, var(--foreground) 35%, transparent));
-  -webkit-mask-image: radial-gradient(circle 9rem at var(--x, 50%) var(--y, 50%), #000 0%, rgb(0 0 0 / 0.45) 45%, transparent 100%);
-  mask-image: radial-gradient(circle 9rem at var(--x, 50%) var(--y, 50%), #000 0%, rgb(0 0 0 / 0.45) 45%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.35s ease;
-  pointer-events: none;
-}
-@media (hover: hover) and (pointer: fine) {
-  .footer-wordmark-rise:hover .footer-wordmark-glow {
-    opacity: 1;
+@keyframes text-draw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
+
+/*
+  Scroll reveal for below-the-fold content: each .reveal element rises in as it enters the viewport.
+  Pure CSS (scroll-driven animations), no JavaScript; browsers without support just show the content.
+  --i staggers a row of cards a little.
+*/
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .footer-wordmark-rise {
-      animation: wordmark-rise linear both;
+    .reveal {
+      animation: reveal-in linear both;
       animation-timeline: view();
-      /* Done once it's fully on screen: it's the last thing on the page, so it can't scroll any further */
-      animation-range: entry 0% entry 100%;
+      animation-range: entry calc(var(--i, 0) * 4%) entry calc(55% + var(--i, 0) * 4%);
     }
   }
 }
-@keyframes wordmark-rise {
+@keyframes reveal-in {
   from {
     opacity: 0;
-    transform: translateY(30%);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Loading placeholder (components/ui/skeleton.tsx): a muted block with a soft light sweeping across */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--secondary);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 6%, transparent), transparent);
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Pictures fade in once loaded, over a skeleton behind them (components/ui/fade-image.tsx) */
+.fade-image {
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-image.is-loaded {
+  opacity: 1;
+}
+
+/* Account menu: a quick scale and fade in from its corner */
+.dropdown-pop {
+  animation: dropdown-pop 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform-origin: top right;
+}
+@keyframes dropdown-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
   }
 }
 
@@ -447,8 +478,14 @@ dialog.search-dialog::backdrop {
   .hint-pop,
   .event-card:hover .btn-buy::after,
   .fade-in,
-  .watermark-letter {
+  .watermark-letter,
+  .skeleton::after,
+  .dropdown-pop {
     animation: none;
+  }
+  .text-draw {
+    stroke-dashoffset: 0;
+    animation: none !important;
   }
   .watermark-shine {
     display: none;

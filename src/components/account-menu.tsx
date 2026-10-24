@@ -70,7 +70,7 @@ export function AccountDropdown({ account }: { account: Account }) {
       </button>
 
       {open && (
-        <div role="menu" className="menu-drop absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl shadow-black/10 dark:shadow-black/40">
+        <div role="menu" className="dropdown-pop absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl shadow-black/10 dark:shadow-black/40">
           <AccountSummary account={account} />
           <div className="my-1 h-px bg-border" />
           {LINKS.map((link) => (
