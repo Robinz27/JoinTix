@@ -13,8 +13,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="th"
-      // Dark until THEME_SCRIPT says otherwise; ThemeToggle flips the class without re-rendering this layout
-      className={`${fontVariables} dark h-full antialiased motion-safe:scroll-smooth`}
+      // Light until THEME_SCRIPT says otherwise; ThemeToggle flips the class without re-rendering this layout
+      className={`${fontVariables} h-full antialiased motion-safe:scroll-smooth`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

@@ -1,7 +1,7 @@
 export type Theme = "light" | "dark";
 
 export const THEME_COOKIE = "theme";
-export const DEFAULT_THEME: Theme = "dark";
+export const DEFAULT_THEME: Theme = "light";
 
 /**
  * Runs in <head> before the page paints (app/layout.tsx), so a light-theme visitor never sees a dark

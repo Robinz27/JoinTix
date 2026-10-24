@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.3.5",
@@ -18,6 +19,7 @@
     "@neondatabase/serverless": "^1.2.0",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.3",
+    "ogl": "^1.0.11",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

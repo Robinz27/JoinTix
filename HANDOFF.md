@@ -50,7 +50,7 @@
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
 | ระบบชำระเงิน | ⏳ ยังไม่เริ่ม |
 | Navbar + สลับธีมขาว/ดำ + ค้นหา (Ctrl K) | ✅ เสร็จ (sticky เป็นแคปซูลลอยตอนเลื่อนลง, มีเมนูมือถือ) |
-| หน้าแรก | ⏳ ยังเป็นหน้า placeholder รอออกแบบ |
+| หน้าแรก: ส่วน hero (พื้นหลัง veil เคลื่อนไหว, จุดสถานะ DB, ข้อความค่อยๆ ขึ้น) | ✅ เสร็จ (ยกมาจาก next.js-shop) ส่วนอื่นของหน้าแรกยังรอออกแบบ |
 | หน้า `/events`, `/docs`, `/login`, `/register` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
@@ -76,6 +76,11 @@
 
 > **เจอ `'npm' is not recognized`?** แปลว่ายังไม่มี Node.js หรือเพิ่งติดตั้งแต่ยังใช้หน้าต่าง cmd เดิมอยู่
 > ให้ดับเบิลคลิก `setup.cmd` หรือ `start.cmd` แทน หรือปิด cmd แล้วเปิดใหม่
+>
+> **ดึงโค้ดใหม่แล้วแต่หน้าเว็บไม่มี style / ยังเป็นหน้าเก่า?**
+> 1. GitHub Desktop: ปุ่ม **Fetch origin** แค่เช็กว่ามีของใหม่ ต้องกด **Pull origin** ต่ออีกครั้งโค้ดถึงจะเข้าเครื่อง
+> 2. ปิด dev server ตัวเก่าทุกหน้าต่าง (Ctrl+C) แล้วรัน `npm i` และ `npm run dev:fresh` (ล้าง cache `.next` แล้วเปิดใหม่)
+> 3. ในเบราว์เซอร์กด **Ctrl+F5** เพื่อโหลดใหม่แบบไม่ใช้ cache
 >
 > **โปรเจกต์อยู่ใน OneDrive?** แนะนำย้ายออกมาไว้ที่อื่น เช่น `C:\Projects\JoinTix` เพราะ OneDrive จะ sync `node_modules` หลายหมื่นไฟล์ ทำให้ช้ามากและล็อกไฟล์จน `npm` พัง
 >
@@ -117,6 +122,7 @@ DATABASE_URL='<connection string ของ Neon>'
 | คำสั่ง | ทำอะไร |
 |---|---|
 | `npm run dev` | เปิด dev server |
+| `npm run dev:fresh` | ล้าง cache `.next` แล้วเปิด dev server (ใช้เมื่อหน้าเว็บค้างของเก่า / style ไม่ขึ้น) |
 | `npm run build` | build production (ไม่ต้องมี `DATABASE_URL` ก็ build ได้) |
 | `npm run lint` | ตรวจโค้ด |
 | `npm run db:generate` | สร้างไฟล์ migration จาก `src/db/schema.ts` ลงโฟลเดอร์ `drizzle/` |
@@ -133,14 +139,19 @@ src/
   app/
     api/health/route.ts   ← เช็กการเชื่อมต่อ DB
     layout.tsx            ← ฟอนต์, script กันจอกระพริบตอนโหลดธีม, Navbar
-    page.tsx              ← หน้าแรก (placeholder)
+    page.tsx              ← หน้าแรก (ส่วน hero)
     globals.css           ← ค่าสีธีมสว่าง/มืด + animation เมนู
     fonts.ts              ← Google Sans Flex + Noto Sans Thai
   components/
     navbar.tsx            ← แถบเมนูบน: sticky, เมนูมือถือ, ปุ่มค้นหา/ธีม/เข้าสู่ระบบ/สมัคร
-    theme-toggle.tsx      ← ปุ่มสลับธีม (จำค่าใน cookie `theme`, ค่าเริ่มต้นธีมมืด)
+    theme-toggle.tsx      ← ปุ่มสลับธีม (จำค่าใน cookie `theme`, ค่าเริ่มต้นธีมสว่าง)
     search-dialog.tsx     ← กล่องค้นหา → ไปที่ /events?q=...
     icon.tsx              ← ห่อ Hugeicons ให้เส้นบาง 1.5 เหมือนกันทั้งเว็บ
+    hero-veil.tsx, dark-veil*.ts(x) ← พื้นหลัง WebGL (ogl) หลังหัวข้อหน้าแรก
+    db-status.tsx         ← จุดเขียว/แดงบอกว่าต่อ DB ได้ไหม
+    dot-matrix-loader.tsx ← ไอคอนจุดวงแหวนกระพริบ
+    text-animate.tsx      ← ข้อความค่อยๆ ขึ้นทีละตัว/คำ (ตัดคำไทยถูกต้อง)
+    ui/hint.tsx           ← tooltip แทน title ของเบราว์เซอร์
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
   db/

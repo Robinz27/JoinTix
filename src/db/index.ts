@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
@@ -15,4 +16,14 @@ let instance: ReturnType<typeof createDb> | undefined;
 export function getDb() {
   instance ??= createDb();
   return instance;
+}
+
+/** Whether the database answers a trivial query, and why not if it doesn't. */
+export async function checkConnection(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await getDb().execute(sql`select 1`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
-  Theme ported from next.js-shop: monochrome, dark by default (the inline script in app/layout.tsx).
+  Theme ported from next.js-shop: monochrome, light by default (the inline script in app/layout.tsx).
   Arial resized to Google Sans Flex's metrics so text doesn't shift when the web font swaps in.
 */
 @font-face {
@@ -15,7 +15,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Light theme */
+/* Light theme (default) */
 :root {
   color-scheme: light;
   --background: #ffffff;
@@ -30,11 +30,15 @@
   --primary-foreground: #fafafa;
   --surface: #ffffff;
   --input: #fafafa;
+  --shimmer-base: #a1a1aa;
+  --shimmer-shine: #000000;
+  --loader-on: #171717;
+  --loader-off: #d4d4d4;
   --scrollbar-thumb: #d4d4d8;
   --scrollbar-thumb-hover: #a1a1aa;
 }
 
-/* Dark theme (default) */
+/* Dark theme */
 .dark {
   color-scheme: dark;
   --background: #000000;
@@ -49,6 +53,10 @@
   --primary-foreground: #171717;
   --surface: #0a0a0a;
   --input: #101010;
+  --shimmer-base: #71717a;
+  --shimmer-shine: #ffffff;
+  --loader-on: #f5f5f5;
+  --loader-off: #404040;
   --scrollbar-thumb: #3f3f46;
   --scrollbar-thumb-hover: #71717a;
 }
@@ -124,6 +132,88 @@ body {
   transition: color 0.5s ease, background-color 0.5s ease, border-color 0.5s ease, outline-color 0.5s ease, fill 0.5s ease !important;
 }
 
+/* Light sweep across text, used on the home hero's status pill */
+.text-shimmer {
+  --spread: 58px;
+  --base: var(--shimmer-base);
+  --shine: var(--shimmer-shine);
+  background-image:
+    linear-gradient(90deg, #0000 calc(50% - var(--spread)), var(--shine), #0000 calc(50% + var(--spread))),
+    linear-gradient(var(--base), var(--base));
+  background-size: 250% 100%, auto;
+  background-repeat: no-repeat, padding-box;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 2s linear infinite;
+}
+@keyframes text-shimmer {
+  from {
+    background-position: 100% center;
+  }
+  to {
+    background-position: 0% center;
+  }
+}
+
+/*
+  Page entrance: children of .stagger rise in one after another (blur → sharp, 8px up), 55ms apart.
+  A child that animates its own text (TextAnimate) opts out with .stagger-skip.
+*/
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.stagger > *,
+.stagger-item {
+  animation: stagger-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc((var(--stagger-start, 0) + var(--i, 0)) * 55ms + 80ms);
+}
+.stagger > .stagger-skip {
+  animation: none;
+}
+.stagger > :nth-child(2) { --i: 1; }
+.stagger > :nth-child(3) { --i: 2; }
+.stagger > :nth-child(4) { --i: 3; }
+.stagger > :nth-child(5) { --i: 4; }
+.stagger > :nth-child(n + 6) { --i: 5; }
+
+/* TextAnimate (components/text-animate.tsx): Magic UI's "blurInUp", one letter or word at a time */
+@keyframes text-blur-in-up {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.text-animate-piece {
+  display: inline-block;
+  white-space: pre;
+  animation: text-blur-in-up 0.3s ease-out both;
+}
+
+/* Tooltips (components/ui/hint.tsx) */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.hint-pop {
+  animation: fade-in 0.14s ease-out;
+}
+
 /* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
 .menu-drop {
   animation: menu-drop 0.18s ease-out;
@@ -170,6 +260,11 @@ body {
 dialog.search-dialog[open] {
   animation: menu-drop 0.18s ease-out;
 }
+/* The dialog has its own close button, so drop the browser's built-in clear (x) on search fields */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  appearance: none;
+}
 dialog.search-dialog::backdrop {
   background: rgb(0 0 0 / 0.5);
   backdrop-filter: blur(4px);
@@ -180,7 +275,16 @@ dialog.search-dialog::backdrop {
   .menu-row,
   .menu-lift,
   .menu-lift .menu-row,
-  dialog.search-dialog[open] {
+  dialog.search-dialog[open],
+  .stagger > *,
+  .stagger-item,
+  .text-animate-piece,
+  .hint-pop {
     animation: none;
+  }
+  .text-shimmer {
+    animation: none;
+    color: var(--base);
+    background: none;
   }
 }
