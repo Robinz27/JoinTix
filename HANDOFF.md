@@ -63,13 +63,21 @@
 
 1. ดาวน์โหลดโปรเจกต์: บน GitHub กด **Code → Download ZIP** แล้วแตกไฟล์ (หรือใช้ `git clone` ถ้ามี git)
 2. รันสคริปต์ setup
-   - **Windows:** ดับเบิลคลิก `setup.cmd`
+   - **Windows:** ดับเบิลคลิก `setup.cmd` (หรือพิมพ์ `setup` ใน cmd ที่อยู่ในโฟลเดอร์โปรเจกต์)
    - **macOS / Linux:** เปิด Terminal ในโฟลเดอร์โปรเจกต์ แล้วรัน `bash scripts/setup.sh`
-3. ถ้าสคริปต์เพิ่งติดตั้ง Node.js ให้ปิด Terminal แล้วเปิดใหม่หนึ่งครั้ง
-4. รัน `npm run dev` แล้วเปิด http://localhost:3000/api/health ถ้าเห็น `"ok": true` แปลว่าต่อ DB ได้แล้ว
+3. ตอบ `Y` เมื่อถามว่าจะติดตั้ง Node.js ไหม (npm มาพร้อม Node.js) และกดยอมรับหน้าต่าง admin ของ Windows ถ้ามีเด้งขึ้นมา
+4. วาง `DATABASE_URL` เมื่อสคริปต์ถาม
+5. ตอบ `Y` เมื่อถามว่าจะเปิดแอปเลยไหม แล้วเปิด http://localhost:3000/api/health ถ้าเห็น `"ok": true` แปลว่าต่อ DB ได้แล้ว
 
-> Windows: สคริปต์ใช้ `winget` ติดตั้ง Node.js ถ้าเครื่องไม่มี `winget` ให้โหลด Node.js 22 LTS จาก https://nodejs.org แล้วรัน `setup.cmd` อีกรอบ
-> macOS: สคริปต์ใช้ `nvm` หรือ Homebrew ถ้าเครื่องไม่มีทั้งสองตัว ให้โหลดจาก https://nodejs.org เช่นกัน
+**ครั้งต่อไป (Windows):** ดับเบิลคลิก `start.cmd` ได้เลย ถ้ายังไม่เคยติดตั้งจะรัน setup ให้ก่อนอัตโนมัติ
+
+> **เจอ `'npm' is not recognized`?** แปลว่ายังไม่มี Node.js หรือเพิ่งติดตั้งแต่ยังใช้หน้าต่าง cmd เดิมอยู่
+> ให้ดับเบิลคลิก `setup.cmd` หรือ `start.cmd` แทน หรือปิด cmd แล้วเปิดใหม่
+>
+> **โปรเจกต์อยู่ใน OneDrive?** แนะนำย้ายออกมาไว้ที่อื่น เช่น `C:\Projects\JoinTix` เพราะ OneDrive จะ sync `node_modules` หลายหมื่นไฟล์ ทำให้ช้ามากและล็อกไฟล์จน `npm` พัง
+>
+> Windows: สคริปต์ติดตั้ง Node.js ด้วย `winget` ถ้าไม่มีหรือใช้ไม่ได้จะโหลดตัวติดตั้งจาก nodejs.org ให้เอง
+> macOS: สคริปต์ใช้ `nvm` หรือ Homebrew ถ้าเครื่องไม่มีทั้งสองตัว ให้โหลดจาก https://nodejs.org
 
 ### ทางที่ 2: GitHub Codespaces (ไม่ต้องติดตั้งอะไรในเครื่อง)
 
@@ -128,6 +136,7 @@ src/
 drizzle.config.ts         ← อ่าน DATABASE_URL จาก .env.local
 drizzle/                  ← ไฟล์ migration (จะถูกสร้างเมื่อรัน db:generate)
 setup.cmd                 ← ดับเบิลคลิกติดตั้งบน Windows (เรียก scripts/setup.ps1)
+start.cmd                 ← ดับเบิลคลิกเปิดแอปบน Windows (เรียก scripts/start.ps1)
 scripts/setup.sh          ← สคริปต์ติดตั้งสำหรับ macOS / Linux
 .devcontainer/            ← ตั้งค่า GitHub Codespaces
 .nvmrc                    ← เวอร์ชัน Node.js ของโปรเจกต์ (22)
