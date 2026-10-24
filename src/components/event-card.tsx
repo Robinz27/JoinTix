@@ -3,14 +3,7 @@ import Link from "next/link";
 import { Calendar03Icon, Location01Icon, Ticket02Icon } from "@hugeicons/core-free-icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { Icon } from "@/components/icon";
-import type { EventStatus, EventSummary } from "@/lib/events";
-
-const STATUS: Record<EventStatus, { label: string; tone: "in" | "hot" | "soon" | "out" }> = {
-  "on-sale": { label: "เปิดขาย", tone: "in" },
-  "selling-fast": { label: "ใกล้หมด", tone: "hot" },
-  "coming-soon": { label: "เร็วๆ นี้", tone: "soon" },
-  "sold-out": { label: "บัตรหมด", tone: "out" },
-};
+import type { EventSummary } from "@/lib/events";
 
 // Always Thai time, so the server and every visitor see the same date
 const dateFormat = new Intl.DateTimeFormat("th-TH", {
@@ -22,7 +15,6 @@ const dateFormat = new Intl.DateTimeFormat("th-TH", {
 });
 
 export function EventCard({ event, preload = false }: { event: EventSummary; preload?: boolean }) {
-  const status = STATUS[event.status];
   const buyable = event.status === "on-sale" || event.status === "selling-fast";
 
   return (
@@ -39,12 +31,6 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
             className="event-poster object-cover"
           />
         </Link>
-        <span className="pointer-events-none absolute top-2 left-2">
-          <span className="stock-badge" data-tone={status.tone}>
-            <span className="stock-badge-dot" aria-hidden="true" />
-            {status.label}
-          </span>
-        </span>
         <span className="absolute top-2 right-2">
           <FavoriteButton eventId={event.id} title={event.title} />
         </span>

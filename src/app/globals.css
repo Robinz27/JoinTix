@@ -274,53 +274,6 @@ body {
   }
 }
 
-/* Status badge on a poster; sits on pictures, so it gets its own backdrop */
-.stock-badge {
-  --tone: #22c55e;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tone) 35%, transparent);
-  background: color-mix(in srgb, var(--tone) 22%, rgb(0 0 0 / 0.55));
-  color: color-mix(in srgb, var(--tone) 70%, #fff);
-  backdrop-filter: blur(8px);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 16px;
-  white-space: nowrap;
-}
-.stock-badge[data-tone="hot"] { --tone: #f97316; }
-.stock-badge[data-tone="soon"] { --tone: #38bdf8; }
-.stock-badge[data-tone="out"] { --tone: #ef4444; }
-.stock-badge-dot {
-  position: relative;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: currentColor;
-}
-/* A soft ring pulses out of the dot while tickets are on sale */
-.stock-badge:is([data-tone="in"], [data-tone="hot"]) .stock-badge-dot::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: currentColor;
-  animation: stock-pulse 2s ease-out infinite;
-}
-@keyframes stock-pulse {
-  from {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  to {
-    transform: scale(2.6);
-    opacity: 0;
-  }
-}
-
 /* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
 .menu-drop {
   animation: menu-drop 0.18s ease-out;
@@ -387,7 +340,6 @@ dialog.search-dialog::backdrop {
   .stagger-item,
   .text-animate-piece,
   .hint-pop,
-  .stock-badge-dot::after,
   .event-card:hover .btn-buy::after {
     animation: none;
   }
