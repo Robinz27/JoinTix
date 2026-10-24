@@ -274,6 +274,58 @@ body {
   }
 }
 
+/*
+  Footer wordmark (components/footer-wordmark.tsx): the site name as faded text that melts into the page at
+  the bottom (gradient clipped to the letters). Rises in as it scrolls into view (CSS only; browsers
+  without scroll-driven animations just show it).
+*/
+.footer-wordmark,
+.footer-wordmark-glow {
+  padding-top: 0.1em;
+  background-clip: text;
+  color: transparent;
+}
+.footer-wordmark {
+  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 12%, transparent) 20%, transparent 95%);
+}
+.dark .footer-wordmark {
+  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 20%, transparent) 20%, transparent 95%);
+}
+/* The glow: a brighter copy of the letters, visible only in a soft circle around the mouse */
+.footer-wordmark-glow {
+  background-image: linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 85%, transparent), color-mix(in oklab, var(--foreground) 35%, transparent));
+  -webkit-mask-image: radial-gradient(circle 9rem at var(--x, 50%) var(--y, 50%), #000 0%, rgb(0 0 0 / 0.45) 45%, transparent 100%);
+  mask-image: radial-gradient(circle 9rem at var(--x, 50%) var(--y, 50%), #000 0%, rgb(0 0 0 / 0.45) 45%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .footer-wordmark-rise:hover .footer-wordmark-glow {
+    opacity: 1;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .footer-wordmark-rise {
+      animation: wordmark-rise linear both;
+      animation-timeline: view();
+      /* Done once it's fully on screen: it's the last thing on the page, so it can't scroll any further */
+      animation-range: entry 0% entry 100%;
+    }
+  }
+}
+@keyframes wordmark-rise {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
 .menu-drop {
   animation: menu-drop 0.18s ease-out;

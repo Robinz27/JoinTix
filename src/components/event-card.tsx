@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar03Icon, Location01Icon, Ticket02Icon } from "@hugeicons/core-free-icons";
-import { FavoriteButton } from "@/components/favorite-button";
 import { Icon } from "@/components/icon";
 import type { EventSummary } from "@/lib/events";
 
@@ -21,7 +20,7 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
     <article className="event-card group relative flex h-full flex-col overflow-hidden rounded-2xl border p-2.5 sm:p-3">
       <div className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-secondary">
         {/* The poster links to the event too; tabIndex -1 so keyboard users stop once, on the button */}
-        <Link href={event.href} tabIndex={-1} aria-hidden="true" className="block size-full">
+        <Link href={event.href} tabIndex={-1} aria-hidden="true" className="relative block size-full">
           <Image
             src={event.poster}
             alt=""
@@ -31,9 +30,6 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
             className="event-poster object-cover"
           />
         </Link>
-        <span className="absolute top-2 right-2">
-          <FavoriteButton eventId={event.id} title={event.title} />
-        </span>
       </div>
 
       <div className="flex flex-1 flex-col px-0.5">
