@@ -8,6 +8,8 @@ import { safeNext } from "@/lib/session";
 
 export type LoginState = { error?: string; email?: string };
 export type SignupState = { error?: string; name?: string; email?: string; phone?: string };
+export type ForgotState = { error?: string; sentTo?: string };
+export type ResetState = { error?: string };
 
 // Better Auth's error codes, in words a visitor can act on
 const MESSAGES: Record<string, string> = {
@@ -17,6 +19,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_EMAIL: "รูปแบบอีเมลไม่ถูกต้อง",
   PASSWORD_TOO_SHORT: "รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร",
   PASSWORD_TOO_LONG: "รหัสผ่านยาวเกินไป",
+  INVALID_TOKEN: "ลิงก์รีเซ็ตรหัสผ่านนี้หมดอายุหรือถูกใช้ไปแล้ว ขอลิงก์ใหม่อีกครั้ง",
 };
 
 function messageFor(error: unknown) {
@@ -66,6 +69,38 @@ export async function signUp(_: SignupState, form: FormData): Promise<SignupStat
     return { ...back, error: messageFor(error) };
   }
   redirect(safeNext(form.get("next")));
+}
+
+/**
+ * ลืมรหัสผ่าน: asks Better Auth to email a reset link. The answer is the same whether or not the address
+ * has an account, so the form can't be used to find out who has one.
+ */
+export async function requestPasswordReset(_: ForgotState, form: FormData): Promise<ForgotState> {
+  const email = text(form, "email").toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: MESSAGES.INVALID_EMAIL };
+
+  try {
+    // The emailed link checks the token, then lands on /reset-password?token=… (or ?error=INVALID_TOKEN)
+    await auth.api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" }, headers: await headers() });
+  } catch (error) {
+    return { error: messageFor(error) };
+  }
+  return { sentTo: email };
+}
+
+export async function resetPassword(_: ResetState, form: FormData): Promise<ResetState> {
+  const token = String(form.get("token") ?? "");
+  const password = String(form.get("password") ?? "");
+  if (!token) return { error: MESSAGES.INVALID_TOKEN };
+  if (password.length < 8) return { error: MESSAGES.PASSWORD_TOO_SHORT };
+  if (password !== String(form.get("confirm") ?? "")) return { error: "รหัสผ่านทั้งสองช่องไม่ตรงกัน" };
+
+  try {
+    await auth.api.resetPassword({ body: { newPassword: password, token }, headers: await headers() });
+  } catch (error) {
+    return { error: messageFor(error) };
+  }
+  redirect("/login?reset=1");
 }
 
 export async function signOut() {

@@ -48,7 +48,8 @@
 | เชื่อมต่อฐานข้อมูล (`/api/health`) | ✅ ทดสอบผ่าน |
 | ตารางระบบสมาชิก (`user`, `session`, `account`, `verification`) | ✅ สร้างใน Neon แล้ว (migration `drizzle/0000_auth.sql`) |
 | ออกแบบ DB schema ส่วนอีเวนต์ / ที่นั่ง / ตั๋ว / order | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ตาราง events ฯลฯ ให้อ้าง `user.id` ที่เป็น text) |
-| ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: ลืมรหัสผ่าน, ยืนยันอีเมล, หน้า `/profile` `/tickets` |
+| ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: ยืนยันอีเมล, หน้า `/profile` `/tickets` |
+| ลืมรหัสผ่าน | ✅ เสร็จ: `/forgot-password` ส่งลิงก์ทางอีเมล (Resend) → `/reset-password` ตั้งรหัสใหม่ ลิงก์ใช้ได้ครั้งเดียว 1 ชม. และออกจากระบบทุกอุปกรณ์ ถ้ายังไม่ใส่ `RESEND_API_KEY` ลิงก์จะไปโผล่ใน terminal ของ server แทน |
 | Upstash Redis (lock / rate limit / queue) | ⏳ ยังไม่เริ่ม |
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
 | ระบบชำระเงิน | ⏳ ยังไม่เริ่ม |
@@ -116,6 +117,9 @@ npm ci
 DATABASE_URL='<connection string ของ Neon>'
 BETTER_AUTH_SECRET='<สุ่มยาว 32 ไบต์ เช่นจาก openssl rand -base64 32>'
 BETTER_AUTH_URL='http://localhost:3000'
+# ไม่บังคับ: ส่งอีเมลลืมรหัสผ่านจริง (ไม่ใส่ = แสดงลิงก์ใน terminal แทน)
+RESEND_API_KEY='re_...'
+EMAIL_FROM='JoinTix <onboarding@resend.dev>'
 ```
 
 > `.env.local` ถูก git ignore ไว้ จะไม่ขึ้น repo — อย่าเปลี่ยนชื่อไฟล์เป็นอย่างอื่น
@@ -175,10 +179,12 @@ src/
     auth.ts               ← ตั้งค่า Better Auth (ฝั่ง server)
     auth-client.ts        ← Better Auth ฝั่งเบราว์เซอร์ (navbar ใช้อ่าน session)
     session.ts            ← getSession() สำหรับ Server Component / safeNext() กัน ?next= พาออกนอกเว็บ
+    mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมลรีเซ็ตรหัสผ่าน
   app/
     actions/auth.ts       ← server actions: signIn, signUp, signOut (ข้อความ error ภาษาไทย)
     api/auth/[...all]/    ← endpoint ของ Better Auth
     login/, register/     ← หน้าเข้าสู่ระบบ / สมัครสมาชิก
+    forgot-password/, reset-password/ ← ขอลิงก์ลืมรหัสผ่าน / ตั้งรหัสใหม่
   components/
     auth/                 ← ฟอร์มล็อกอิน / สมัคร (สไตล์จาก next.js-shop)
     account-menu.tsx      ← เมนูบัญชีใน navbar + ปุ่มออกจากระบบ

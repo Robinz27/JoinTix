@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, useSyncExternalStore } from "react";
-import { Alert02Icon, Loading03Icon, Tick02Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, CheckmarkCircle02Icon, Loading03Icon, Tick02Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { Watermark } from "@/components/watermark";
 
@@ -101,6 +101,19 @@ export function FormError({ message }: { message?: string }) {
     >
       <Icon icon={Alert02Icon} className="mt-px size-4 shrink-0" />
       <span>{message}</span>
+    </div>
+  );
+}
+
+/** A good-news line above a form (link sent, password changed) */
+export function FormNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
+    >
+      <Icon icon={CheckmarkCircle02Icon} className="mt-px size-4 shrink-0" />
+      <span>{children}</span>
     </div>
   );
 }

@@ -19,7 +19,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 }
 
 async function Form({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
-  const next = safeNext((await searchParams).next);
+  const params = await searchParams;
+  const next = safeNext(params.next);
   if (await getSession()) redirect(next);
-  return <LoginForm next={next} />;
+  // ?reset=1: back from /reset-password with a new password
+  return <LoginForm next={next} passwordReset={params.reset === "1"} />;
 }

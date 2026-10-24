@@ -4,9 +4,9 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { Login03Icon } from "@hugeicons/core-free-icons";
 import { signIn, type LoginState } from "@/app/actions/auth";
-import { AuthTips, Checkbox, Field, FormError, Kbd, PasswordInput, SubmitButton, TextInput } from "@/components/auth/auth-ui";
+import { AuthTips, Checkbox, Field, FormError, FormNotice, Kbd, PasswordInput, SubmitButton, TextInput } from "@/components/auth/auth-ui";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, passwordReset = false }: { next: string; passwordReset?: boolean }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(signIn, {});
 
   return (
@@ -16,6 +16,7 @@ export function LoginForm({ next }: { next: string }) {
         {/* Staggered wrapper: React prepends hidden inputs to server-action forms, which would shift nth-child */}
         <div className="stagger space-y-5" style={{ "--stagger-start": 1 } as React.CSSProperties}>
           <FormError message={state.error} />
+          {passwordReset && !state.error && <FormNotice>ตั้งรหัสผ่านใหม่เรียบร้อย เข้าสู่ระบบด้วยรหัสผ่านใหม่ได้เลย</FormNotice>}
 
           <Field label="อีเมล">
             {(id) => (
@@ -38,7 +39,7 @@ export function LoginForm({ next }: { next: string }) {
 
           <div className="flex items-center justify-between gap-3">
             <Checkbox name="remember" label="จดจำฉันไว้" defaultChecked />
-            <Link href="/forgot-password" prefetch={false} className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+            <Link href="/forgot-password" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
               ลืมรหัสผ่าน?
             </Link>
           </div>
