@@ -326,6 +326,59 @@ body {
   }
 }
 
+/* Quick fade for the auth card's frame, whose contents stagger in on their own */
+.fade-in {
+  animation: fade-in 0.3s ease both;
+}
+
+/*
+  Auth card watermark (LOGIN / SIGNUP, components/watermark.tsx): letters rise in one by one, then a light
+  beam keeps sweeping across the word. The beam lives on a copy of the word laid over the letters.
+*/
+.watermark-letter {
+  display: inline-block;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--foreground) 8%, transparent), transparent);
+  background-clip: text;
+  color: transparent;
+  animation: watermark-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 90ms + 100ms);
+}
+@keyframes watermark-rise {
+  from {
+    opacity: 0;
+    transform: translateY(40%);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+.watermark-shine {
+  background: linear-gradient(100deg, transparent 40%, color-mix(in oklab, var(--foreground) 26%, transparent) 50%, transparent 60%)
+    120% 0 / 250% 100% no-repeat;
+  background-clip: text;
+  color: transparent;
+  /* Same top-to-bottom fade as the letters, so the beam dies out towards the bottom too */
+  mask-image: linear-gradient(180deg, #000 25%, transparent 100%);
+  animation: watermark-shine 4s linear infinite;
+  animation-delay: var(--shine-delay, 1s);
+}
+.watermark-shine > span {
+  display: inline-block;
+}
+/* Sweep in the first 60% of each cycle, then rest off to the side */
+@keyframes watermark-shine {
+  0% {
+    background-position: 120% 0;
+  }
+  60%,
+  100% {
+    background-position: -20% 0;
+  }
+}
+
 /* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
 .menu-drop {
   animation: menu-drop 0.18s ease-out;
@@ -392,8 +445,13 @@ dialog.search-dialog::backdrop {
   .stagger-item,
   .text-animate-piece,
   .hint-pop,
-  .event-card:hover .btn-buy::after {
+  .event-card:hover .btn-buy::after,
+  .fade-in,
+  .watermark-letter {
     animation: none;
+  }
+  .watermark-shine {
+    display: none;
   }
   .event-card:hover .event-poster {
     transform: none;
