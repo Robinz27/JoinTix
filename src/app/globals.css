@@ -1,26 +1,186 @@
 @import "tailwindcss";
 
+/*
+  Theme ported from next.js-shop: monochrome, dark by default (the inline script in app/layout.tsx).
+  Arial resized to Google Sans Flex's metrics so text doesn't shift when the web font swaps in.
+*/
+@font-face {
+  font-family: "Google Sans Flex Fallback";
+  src: local("Arial"), local("ArialMT");
+  size-adjust: 100.82%;
+  ascent-override: 95.81%;
+  descent-override: 28.37%;
+  line-gap-override: 0%;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme */
 :root {
+  color-scheme: light;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0a0a;
+  --muted-foreground: #737373;
+  --border: #e5e5e5;
+  --card: #f5f5f5;
+  --secondary: #ebebeb;
+  --secondary-hover: #e0e0e0;
+  --primary: #171717;
+  --primary-hover: #262626;
+  --primary-foreground: #fafafa;
+  --surface: #ffffff;
+  --input: #fafafa;
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-thumb-hover: #a1a1aa;
+}
+
+/* Dark theme (default) */
+.dark {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #ededed;
+  --muted-foreground: #a3a3a3;
+  --border: #262626;
+  --card: #171717;
+  --secondary: #262626;
+  --secondary-hover: #404040;
+  --primary: #e5e5e5;
+  --primary-hover: #d4d4d4;
+  --primary-foreground: #171717;
+  --surface: #0a0a0a;
+  --input: #101010;
+  --scrollbar-thumb: #3f3f46;
+  --scrollbar-thumb-hover: #71717a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-input: var(--input);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --font-sans: var(--font-google-sans-flex), var(--font-noto-sans-thai), system-ui, sans-serif;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--foreground) 25%, transparent);
+}
+:root {
+  caret-color: var(--foreground);
+  accent-color: var(--foreground);
+}
+
+/* Slim rounded scrollbars that follow the theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb) padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+/* Theme switch fades instead of snapping (lib/theme.ts); .theme-fade is the fallback without View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: ease-in-out;
+}
+.theme-fade,
+.theme-fade *,
+.theme-fade *::before,
+.theme-fade *::after {
+  transition: color 0.5s ease, background-color 0.5s ease, border-color 0.5s ease, outline-color 0.5s ease, fill 0.5s ease !important;
+}
+
+/* Phone menu (components/navbar.tsx): the panel drops in, rows follow one by one, and it lifts away bottom-first */
+.menu-drop {
+  animation: menu-drop 0.18s ease-out;
+  transform-origin: top center;
+}
+@keyframes menu-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+.menu-row {
+  animation: menu-row 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+@keyframes menu-row {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.menu-lift {
+  animation: menu-lift 0.19s ease-in forwards;
+  transform-origin: top center;
+}
+@keyframes menu-lift {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+.menu-lift .menu-row {
+  animation: menu-row-out 0.14s ease-in forwards;
+  animation-delay: calc((var(--rows, 8) - var(--i, 0)) * 12ms);
+}
+@keyframes menu-row-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Search dialog (components/search-dialog.tsx) */
+dialog.search-dialog[open] {
+  animation: menu-drop 0.18s ease-out;
+}
+dialog.search-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-drop,
+  .menu-row,
+  .menu-lift,
+  .menu-lift .menu-row,
+  dialog.search-dialog[open] {
+    animation: none;
+  }
 }

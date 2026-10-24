@@ -28,6 +28,7 @@
 | Database | **Neon** (Serverless **PostgreSQL** 18, region Singapore) | เปลี่ยนจาก PlanetScale MySQL ใน spec แรก ดูเหตุผลข้อ 2.1 |
 | ORM | **Drizzle ORM** + `@neondatabase/serverless` (HTTP driver) | |
 | Cache / Lock / Queue | **Upstash Redis** | ⏳ ยังไม่ได้ติดตั้ง |
+| UI theme / icons | ธีมขาวดำ + ฟอนต์ Google Sans Flex / Noto Sans Thai ยกมาจากโปรเจกต์ next.js-shop, ไอคอน **Hugeicons** | ค่าสีอยู่ใน `src/app/globals.css` ใช้ class อย่าง `bg-card`, `text-muted-foreground` ห้ามใส่สี hex ตรงๆ |
 
 ### 2.1 ทำไมใช้ Postgres (Neon) แทน PlanetScale MySQL
 
@@ -48,7 +49,9 @@
 | Upstash Redis (lock / rate limit / queue) | ⏳ ยังไม่เริ่ม |
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
 | ระบบชำระเงิน | ⏳ ยังไม่เริ่ม |
-| UI | ⏳ ยังเป็นหน้า default ของ Next.js |
+| Navbar + สลับธีมขาว/ดำ + ค้นหา (Ctrl K) | ✅ เสร็จ (sticky เป็นแคปซูลลอยตอนเลื่อนลง, มีเมนูมือถือ) |
+| หน้าแรก | ⏳ ยังเป็นหน้า placeholder รอออกแบบ |
+| หน้า `/events`, `/docs`, `/login`, `/register` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
 
@@ -129,7 +132,17 @@ DATABASE_URL='<connection string ของ Neon>'
 src/
   app/
     api/health/route.ts   ← เช็กการเชื่อมต่อ DB
-    layout.tsx, page.tsx  ← ยังเป็นของ default
+    layout.tsx            ← ฟอนต์, script กันจอกระพริบตอนโหลดธีม, Navbar
+    page.tsx              ← หน้าแรก (placeholder)
+    globals.css           ← ค่าสีธีมสว่าง/มืด + animation เมนู
+    fonts.ts              ← Google Sans Flex + Noto Sans Thai
+  components/
+    navbar.tsx            ← แถบเมนูบน: sticky, เมนูมือถือ, ปุ่มค้นหา/ธีม/เข้าสู่ระบบ/สมัคร
+    theme-toggle.tsx      ← ปุ่มสลับธีม (จำค่าใน cookie `theme`, ค่าเริ่มต้นธีมมืด)
+    search-dialog.tsx     ← กล่องค้นหา → ไปที่ /events?q=...
+    icon.tsx              ← ห่อ Hugeicons ให้เส้นบาง 1.5 เหมือนกันทั้งเว็บ
+  lib/
+    theme.ts              ← อ่าน/ตั้งค่าธีม
   db/
     index.ts              ← getDb() สร้าง connection ตอนเรียกใช้ครั้งแรก
     schema.ts             ← ตาราง Drizzle (ยังว่าง รอออกแบบ)
