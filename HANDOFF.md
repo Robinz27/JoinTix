@@ -54,30 +54,50 @@
 
 ## 4. เริ่มต้นใช้งาน (สำหรับเพื่อนในกลุ่ม)
 
-ต้องมี Node.js 22 ขึ้นไป
+ก่อนเริ่ม ขอ **Neon `DATABASE_URL`** จากเจ้าของโปรเจกต์ในกลุ่มไว้ก่อน เลือกวิธีใดวิธีหนึ่งด้านล่าง
+
+### ทางที่ 1: ติดตั้งในเครื่องด้วยสคริปต์ (แนะนำ)
+
+ไม่ต้องติดตั้ง Node.js เอง สคริปต์จะเช็กให้ ถ้ายังไม่มีจะถามก่อนแล้วติดตั้งให้
+จากนั้นจะรัน `npm ci` และถาม `DATABASE_URL` เพื่อสร้างไฟล์ `.env.local` ให้
+
+1. ดาวน์โหลดโปรเจกต์: บน GitHub กด **Code → Download ZIP** แล้วแตกไฟล์ (หรือใช้ `git clone` ถ้ามี git)
+2. รันสคริปต์ setup
+   - **Windows:** ดับเบิลคลิก `setup.cmd`
+   - **macOS / Linux:** เปิด Terminal ในโฟลเดอร์โปรเจกต์ แล้วรัน `bash scripts/setup.sh`
+3. ถ้าสคริปต์เพิ่งติดตั้ง Node.js ให้ปิด Terminal แล้วเปิดใหม่หนึ่งครั้ง
+4. รัน `npm run dev` แล้วเปิด http://localhost:3000/api/health ถ้าเห็น `"ok": true` แปลว่าต่อ DB ได้แล้ว
+
+> Windows: สคริปต์ใช้ `winget` ติดตั้ง Node.js ถ้าเครื่องไม่มี `winget` ให้โหลด Node.js 22 LTS จาก https://nodejs.org แล้วรัน `setup.cmd` อีกรอบ
+> macOS: สคริปต์ใช้ `nvm` หรือ Homebrew ถ้าเครื่องไม่มีทั้งสองตัว ให้โหลดจาก https://nodejs.org เช่นกัน
+
+### ทางที่ 2: GitHub Codespaces (ไม่ต้องติดตั้งอะไรในเครื่อง)
+
+เหมาะกับเครื่องที่ติดตั้งโปรแกรมไม่ได้ เช่นคอมมหาลัย ใช้งานผ่านเบราว์เซอร์อย่างเดียว
+
+1. ตั้ง secret หนึ่งครั้ง: GitHub → Settings → Codespaces → **New secret** ชื่อ `DATABASE_URL` เลือก repo นี้
+2. ที่หน้า repo กด **Code → Codespaces → Create codespace on main**
+3. รอให้ติดตั้งเสร็จ (`npm ci` จะรันเอง และระบบจะสร้าง `.env.local` จาก secret ให้)
+4. รัน `npm run dev` ใน Terminal พอร์ต 3000 จะถูกเปิดในเบราว์เซอร์ให้เอง
+
+> Codespaces มีชั่วโมงใช้งานฟรีจำกัดต่อเดือน (บัญชีนักศึกษาผ่าน GitHub Education ได้โควตาเพิ่ม) ใช้เสร็จให้กด Stop codespace
+
+### ทางที่ 3: ทำเองทีละขั้น (ถ้ามี Node.js 22+ อยู่แล้ว)
 
 ```bash
-git clone <repo-url>
-cd JoinTix
-npm install
+npm ci
 ```
 
 สร้างไฟล์ `.env.local` ที่ root ของโปรเจกต์ (ระดับเดียวกับ `package.json`) แล้วใส่:
 
 ```
-DATABASE_URL='<ขอ connection string ของ Neon จากเจ้าของโปรเจกต์ในกลุ่ม>'
+DATABASE_URL='<connection string ของ Neon>'
 ```
 
 > `.env.local` ถูก git ignore ไว้ จะไม่ขึ้น repo — อย่าเปลี่ยนชื่อไฟล์เป็นอย่างอื่น
 > บน Windows ระวัง Notepad เติม `.txt` ต่อท้าย
 
-จากนั้นรัน:
-
-```bash
-npm run dev
-```
-
-เปิด http://localhost:3000/api/health ถ้าเห็น `"ok": true` แปลว่าต่อ DB ได้แล้ว
+จากนั้นรัน `npm run dev` แล้วเปิด http://localhost:3000/api/health
 
 > ทุกคนใช้ DB ตัวเดียวกัน — **ห้ามรัน `db:push` / `db:migrate` หรือลบข้อมูลโดยไม่บอกกลุ่มก่อน**
 
@@ -107,6 +127,10 @@ src/
     schema.ts             ← ตาราง Drizzle (ยังว่าง รอออกแบบ)
 drizzle.config.ts         ← อ่าน DATABASE_URL จาก .env.local
 drizzle/                  ← ไฟล์ migration (จะถูกสร้างเมื่อรัน db:generate)
+setup.cmd                 ← ดับเบิลคลิกติดตั้งบน Windows (เรียก scripts/setup.ps1)
+scripts/setup.sh          ← สคริปต์ติดตั้งสำหรับ macOS / Linux
+.devcontainer/            ← ตั้งค่า GitHub Codespaces
+.nvmrc                    ← เวอร์ชัน Node.js ของโปรเจกต์ (22)
 ```
 
 ---

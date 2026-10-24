@@ -1,0 +1,20 @@
+{
+  "name": "JoinTix",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm ci",
+  "postStartCommand": "if [ ! -f .env.local ] && [ -n \"$DATABASE_URL\" ]; then printf \"DATABASE_URL='%s'\\n\" \"$DATABASE_URL\" > .env.local; fi",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Next.js", "onAutoForward": "openBrowser" }
+  },
+  "secrets": {
+    "DATABASE_URL": {
+      "description": "Neon connection string from the project owner"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "bradlc.vscode-tailwindcss"]
+    }
+  }
+}
