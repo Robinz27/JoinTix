@@ -103,3 +103,61 @@ export function AuthCardSkeleton({ fields }: { fields: number }) {
     </main>
   );
 }
+
+/** Event page, mirrors app/events/[id]/page.tsx: poster and facts on the left, the ticket panel beside them */
+export function EventPageSkeleton() {
+  return (
+    <main className="flex flex-1 justify-center px-3 pt-6 pb-16 sm:pt-8">
+      <div className="w-full max-w-5xl">
+        <SkeletonText lineClassName="mb-4 h-5" className="h-3.5 w-24" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8">
+          <div className="flex flex-col gap-5 sm:flex-row">
+            <Skeleton className="aspect-[4/5] w-full shrink-0 rounded-2xl sm:w-56" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-8 w-3/4 rounded-lg" />
+              {Array.from({ length: 5 }, (_, i) => (
+                <Skeleton key={i} className="h-4 w-56" />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <Skeleton className="mb-3 h-6 w-28" />
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            ))}
+            <Skeleton className="mt-4 h-11 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+/** Profile page, mirrors app/profile/page.tsx: name header, details card, email card */
+export function ProfileSkeleton() {
+  return (
+    <main className="flex flex-1 justify-center px-3 pt-8 pb-16 sm:pt-10">
+      <div className="w-full max-w-xl space-y-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-14 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-40 rounded-lg" />
+            <Skeleton className="h-3.5 w-20" />
+          </div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <Skeleton className="mb-1 h-4 w-24" />
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-4 w-64" />
+          ))}
+        </div>
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-11 w-full rounded-xl" />
+        </div>
+      </div>
+    </main>
+  );
+}
