@@ -3,7 +3,7 @@
 > **อ่านไฟล์นี้ก่อนเริ่มงานทุกครั้ง** ทั้งคนและ AI agent
 > ถ้าแก้อะไรที่กระทบเนื้อหาในไฟล์นี้ (stack, โครงสร้าง, สถานะ, ข้อตกลง) ให้อัปเดตไฟล์นี้ใน commit เดียวกัน
 
-อัปเดตล่าสุด: 2026-10-24
+อัปเดตล่าสุด: 2026-11-04
 
 ---
 
@@ -48,7 +48,9 @@
 | เชื่อมต่อฐานข้อมูล (`/api/health`) | ✅ ทดสอบผ่าน |
 | ตารางระบบสมาชิก (`user`, `session`, `account`, `verification`) | ✅ สร้างใน Neon แล้ว (migration `drizzle/0000_auth.sql`) |
 | ออกแบบ DB schema ส่วนอีเวนต์ / ที่นั่ง / ตั๋ว / order | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ตาราง events ฯลฯ ให้อ้าง `user.id` ที่เป็น text) |
-| ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: ยืนยันอีเมล, หน้า `/profile` `/tickets` |
+| ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: หน้า `/tickets` |
+| ยืนยันอีเมล | ✅ เสร็จ 2 ทาง (ไม่บังคับตอนสมัคร/ล็อกอิน แต่ต้องยืนยันก่อนซื้อบัตร): (1) หน้า `/profile` กดส่งลิงก์ทางอีเมล เปิดลิงก์แล้วยืนยันให้เอง (ใช้ได้ 1 ชม.) (2) ในหน้าซื้อบัตร ถ้ายังไม่ยืนยันจะส่งรหัส 6 หลัก (Better Auth plugin `emailOTP`, 10 นาที กรอกผิดได้ 5 ครั้ง) ไม่มี `RESEND_API_KEY` ลิงก์/รหัสจะโผล่ใน terminal ของ server ลิงก์ในอีเมลใช้ `BETTER_AUTH_URL` เป็นโดเมน |
+| หน้า `/profile` | ✅ ชื่อ อีเมล เบอร์โทร วันที่สมัคร + สถานะยืนยันอีเมล (ยังแก้ข้อมูลไม่ได้) |
 | ลืมรหัสผ่าน | ✅ เสร็จ: `/forgot-password` ส่งลิงก์ทางอีเมล (Resend) → `/reset-password` ตั้งรหัสใหม่ ลิงก์ใช้ได้ครั้งเดียว 1 ชม. และออกจากระบบทุกอุปกรณ์ ถ้ายังไม่ใส่ `RESEND_API_KEY` ลิงก์จะไปโผล่ใน terminal ของ server แทน |
 | Upstash Redis (lock / rate limit / queue) | ⏳ ยังไม่เริ่ม |
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
@@ -59,7 +61,8 @@
 | หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` รูปใน `public/posters/` |
 | Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix แบบ Aceternity Text Hover Effect: เส้นขอบวาดเองตอนเลื่อนถึง + สีรุ้งตามเมาส์) | ✅ เสร็จ ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
 | Animation + skeleton loading | ✅ หน้าแรก / login / register / ลืมรหัสผ่าน มี `loading.tsx` เป็น skeleton, รูปค่อยๆ เฟดขึ้นบน skeleton, การ์ดและ footer ลอยขึ้นตอนเลื่อน (`.reveal`) หน้าใหม่ให้เพิ่ม `loading.tsx` ด้วย (ดูหัว `src/components/ui/skeleton.tsx`) |
-| หน้า `/events`, `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
+| หน้าอีเวนต์ / เลือกซื้อบัตร `/events/[id]` (โปสเตอร์ + รายละเอียด, เลือกโซน + จำนวน จำกัดใบต่อบัญชี, สรุปราคา, ยังไม่ล็อกอินให้ไป `/login?next=`, ปุ่มเปลี่ยนตามสถานะขาย) | ✅ UI เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` (`getEvent`) ต้องล็อกอินและยืนยันอีเมลก่อน ปุ่มซื้อยังแค่บอกว่าระบบจองกำลังพัฒนา รอ API กดบัตร (API ต้องเช็ก `emailVerified` ฝั่ง server ด้วย) |
+| หน้า `/events` (รายการทั้งหมด), `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
 
@@ -167,6 +170,9 @@ src/
     ui/hint.tsx           ← tooltip แทน title ของเบราว์เซอร์
     banner-carousel.tsx   ← แบนเนอร์สไลด์ (Embla)
     section-header.tsx    ← หัวข้อของแต่ละส่วนในหน้าแรก (ไอคอน + ชื่อ + ปุ่มดูทั้งหมด)
+    ticket-panel.tsx      ← กล่องเลือกโซน/จำนวนบัตรในหน้าอีเวนต์ (client)
+    verify-email-code.tsx ← ยืนยันอีเมลด้วยรหัส 6 หลักในหน้าซื้อบัตร
+    verify-email-link.tsx ← กล่องสถานะ + ส่งลิงก์ยืนยันอีเมลในหน้าโปรไฟล์
     event-card.tsx        ← การ์ดอีเวนต์ (ใช้ class .event-card / .btn-buy ใน globals.css)    site-footer.tsx       ← footer ทุกหน้า (ลิงก์อยู่ในตัวแปร GROUPS)
     text-hover-effect.tsx ← ชื่อเว็บตัวใหญ่ท้าย footer (แบบ Aceternity ทำเองด้วย SVG ไม่ใช้ library)
     skeletons.tsx         ← skeleton ของแต่ละหน้า/ส่วน (Hero, Banner, Events, AuthCard)
@@ -183,10 +189,12 @@ src/
     auth.ts               ← ตั้งค่า Better Auth (ฝั่ง server)
     auth-client.ts        ← Better Auth ฝั่งเบราว์เซอร์ (navbar ใช้อ่าน session)
     session.ts            ← getSession() สำหรับ Server Component / safeNext() กัน ?next= พาออกนอกเว็บ
-    mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมลรีเซ็ตรหัสผ่าน
+    mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมล (รีเซ็ตรหัสผ่าน, ลิงก์/รหัสยืนยันอีเมล)
   app/
     actions/auth.ts       ← server actions: signIn, signUp, signOut (ข้อความ error ภาษาไทย)
     api/auth/[...all]/    ← endpoint ของ Better Auth
+    events/[id]/          ← หน้าอีเวนต์ + เลือกซื้อบัตร
+    profile/              ← ข้อมูลบัญชี + ยืนยันอีเมลด้วยลิงก์
     login/, register/     ← หน้าเข้าสู่ระบบ / สมัครสมาชิก
     forgot-password/, reset-password/ ← ขอลิงก์ลืมรหัสผ่าน / ตั้งรหัสใหม่
   components/
@@ -255,8 +263,8 @@ scripts/setup.sh          ← สคริปต์ติดตั้งสำ�
 
 1. ออกแบบ schema: Events, Seats, Tickets, Orders, Payments ← **ทำก่อน** (Users มีแล้วจาก Better Auth)
 2. ติดตั้ง Upstash Redis + เขียน Lua script ล็อกที่นั่ง
-3. Route Handler กดบัตร: เช็กคิว → ล็อก → สร้าง order
-4. หน้า UI: รายการอีเวนต์, ผังที่นั่ง, checkout
+3. Route Handler กดบัตร: เช็กคิว → ล็อก → สร้าง order (ปฏิเสธถ้า `session.user.emailVerified` เป็น false)
+4. หน้า UI: รายการอีเวนต์, ผังที่นั่ง, checkout (หน้าเลือกบัตร `/events/[id]` มีแล้ว ให้ต่อปุ่ม "ซื้อบัตร" ใน `src/components/ticket-panel.tsx` เข้ากับ API ข้อ 3)
 
 ใครรับงานไหนให้เขียนชื่อไว้ท้ายข้อในไฟล์นี้
 
