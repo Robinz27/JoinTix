@@ -50,7 +50,7 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
             <Icon icon={CheckmarkCircle02Icon} className="mt-0.5 size-4 shrink-0" />
             <span>
               ชำระเงินสำเร็จ ได้บัตร {justPaid.quantity} ใบ{justPaid.tokens > 0 ? ` และ ${num.format(justPaid.tokens)} โทเคน` : ""} ระบบส่งบัตรพร้อม QR ไปที่{" "}
-              <b className="font-medium">{session.user.email}</b> แล้ว
+              <b className="font-medium">{session.user.email}</b> แล้ว ถ้าไม่เห็นในกล่องจดหมาย ลองดูในกล่องจดหมายขยะ (Spam / Junk)
             </span>
           </p>
         )}
