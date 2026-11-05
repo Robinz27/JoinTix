@@ -1,4 +1,4 @@
-import { Calendar03Icon, DashboardSquare01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons";
+import { Calendar03Icon, DashboardSquare01Icon, QrCode01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@/components/icon";
 
 // หลังบ้าน's menu, in groups like next.js-shop's back office. A new admin page adds its link here.
@@ -12,6 +12,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     label: "จัดการ",
     links: [
       { href: "/admin/events", label: "อีเวนต์", icon: Calendar03Icon },
+      { href: "/admin/scan", label: "สแกนบัตร", icon: QrCode01Icon },
       { href: "/admin/users", label: "สมาชิก", icon: UserMultipleIcon },
     ],
   },

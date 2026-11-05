@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "gallery" text[] DEFAULT '{}'::text[] NOT NULL;

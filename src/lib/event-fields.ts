@@ -9,4 +9,7 @@ export type PublishState = (typeof PUBLISH_STATES)[number];
 /** What a slug may look like (events.slug): lowercase words joined by - */
 export const SLUG_PATTERN = "[a-z0-9]+(?:-[a-z0-9]+)*";
 
+/** Most pictures an event may have besides its poster (events.gallery) */
+export const MAX_GALLERY = 10;
+
 export const isBuyable = (status: EventStatus) => status === "on-sale" || status === "selling-fast";

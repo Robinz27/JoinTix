@@ -9,7 +9,7 @@ import type { EventStatus, PublishState } from "@/lib/event-fields";
 // What หลังบ้าน reads about events: every row whatever its status, fresh each request (never the
 // storefront's cache in lib/events.ts). Server only.
 
-export type AdminZone = { id: string; name: string; note: string; price: number; capacity: number; sold: number };
+export type AdminZone = { id: string; name: string; note: string; price: number; capacity: number; sold: number; tokens: number };
 
 export type AdminEvent = {
   id: string;
@@ -17,6 +17,9 @@ export type AdminEvent = {
   title: string;
   organizer: string;
   venue: string;
+  venueArea: string;
+  latitude: number | null;
+  longitude: number | null;
   description: string;
   poster: string;
   startsAt: string;
@@ -28,6 +31,8 @@ export type AdminEvent = {
   maxPerOrder: number;
   createdAt: string;
   updatedAt: string;
+  /** More pictures after the poster, in order */
+  gallery: string[];
   zones: AdminZone[];
   /** What the site shows now; drafts get what it would show once published */
   sale: EventStatus;
@@ -40,7 +45,7 @@ export type AdminEvent = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function shape(event: typeof events.$inferSelect, zoneRows: (typeof ticketZones.$inferSelect)[]): AdminEvent {
-  const zones = zoneRows.map(({ id, name, note, price, capacity, sold }) => ({ id, name, note, price, capacity, sold }));
+  const zones = zoneRows.map(({ id, name, note, price, capacity, sold, tokens }) => ({ id, name, note, price, capacity, sold, tokens }));
   return {
     ...event,
     status: event.status as PublishState,

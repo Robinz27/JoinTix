@@ -1,13 +1,15 @@
 "use server";
 
-import { and, eq, like, notInArray, sum } from "drizzle-orm";
+import { and, eq, like, notInArray, or, sql, sum } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { events, ticketZones } from "@/db/schema";
+import { events, orders, ticketZones } from "@/db/schema";
 import type { AdminFormState } from "@/app/actions/admin";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
+import { MAX_GALLERY } from "@/lib/event-fields";
+import { isShortMapLink, parsePin, type Pin } from "@/lib/map";
 import { isPosterSrc } from "@/lib/poster";
 import { requireSuperAdmin } from "@/lib/session";
 import { deleteUploadedImage, isUploadPath, saveUploadedImage } from "@/lib/uploads";
@@ -29,7 +31,7 @@ function thaiTime(value: string): Date | undefined {
 }
 
 /** One zone row from the form; `id` is set for a zone that's already saved */
-type ZoneInput = { id?: string; name: string; note: string; price: number; capacity: number };
+type ZoneInput = { id?: string; name: string; note: string; price: number; capacity: number; tokens: number };
 
 function parseZones(raw: string): ZoneInput[] | string {
   let rows: unknown;
@@ -47,12 +49,14 @@ function parseZones(raw: string): ZoneInput[] | string {
     const note = String(zone.note ?? "").trim();
     const price = Number(zone.price);
     const capacity = Number(zone.capacity);
+    const tokens = Number(zone.tokens ?? 0);
     const where = `โซนที่ ${i + 1}`;
     if (!name || name.length > 60) return `${where}: กรอกชื่อโซน (ไม่เกิน 60 ตัวอักษร)`;
     if (note.length > 120) return `${where}: รายละเอียดยาวเกิน 120 ตัวอักษร`;
     if (!Number.isInteger(price) || price < 0 || price > MAX_TICKETS) return `${where}: ราคาต้องเป็นจำนวนเต็ม 0 ขึ้นไป (0 = ฟรี)`;
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_TICKETS) return `${where}: จำนวนบัตรต้องเป็นจำนวนเต็ม 1 ขึ้นไป`;
-    zones.push({ id: typeof zone.id === "string" && zone.id ? zone.id : undefined, name, note, price, capacity });
+    if (!Number.isInteger(tokens) || tokens < 0 || tokens > MAX_TICKETS) return `${where}: โทเคนต่อใบต้องเป็นจำนวนเต็ม 0 ขึ้นไป`;
+    zones.push({ id: typeof zone.id === "string" && zone.id ? zone.id : undefined, name, note, price, capacity, tokens });
   }
   return zones;
 }
@@ -62,7 +66,37 @@ export type SaveEventState = AdminFormState & {
   zoneIds?: string[];
   /** The poster as saved, an uploaded picture's new path included, so the form stops sending the file */
   poster?: string;
+  /** The same for the gallery: every picture's path, in order */
+  gallery?: string[];
 };
+
+/**
+ * The gallery from the form (components/admin/gallery-field.tsx): in order, each one a path already
+ * saved, or `{ file: n }` for the n-th "galleryFile" sent with it
+ */
+function parseGallery(form: FormData): { entries: (string | File)[] } | { error: string } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(form.get("gallery") ?? "[]"));
+  } catch {
+    return { error: "ข้อมูลรูปเพิ่มเติมไม่ถูกต้อง" };
+  }
+  if (!Array.isArray(raw)) return { error: "ข้อมูลรูปเพิ่มเติมไม่ถูกต้อง" };
+  if (raw.length > MAX_GALLERY) return { error: `รูปเพิ่มเติมได้ไม่เกิน ${MAX_GALLERY} รูป` };
+  const files = form.getAll("galleryFile").filter((f): f is File => f instanceof File && f.size > 0);
+  const entries: (string | File)[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      if (!isPosterSrc(item)) return { error: "มีรูปเพิ่มเติมที่ที่อยู่ไม่ถูกต้อง" };
+      entries.push(item);
+    } else {
+      const file = files[Number((item as { file?: unknown })?.file)];
+      if (!file) return { error: "ส่งรูปเพิ่มเติมไม่ครบ ลองเลือกรูปใหม่อีกครั้ง" };
+      entries.push(file);
+    }
+  }
+  return { entries };
+}
 
 /** สร้าง / แก้ไขอีเวนต์: every field of the event and its whole list of zones, written together */
 export async function saveEvent(_: SaveEventState, form: FormData): Promise<SaveEventState> {
@@ -72,6 +106,12 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   const slug = text(form, "slug").toLowerCase();
   const organizer = text(form, "organizer");
   const venue = text(form, "venue");
+  const venueArea = text(form, "venueArea");
+  // Both or neither: a pin is a point, half of one is nothing
+  const latRaw = text(form, "latitude");
+  const lngRaw = text(form, "longitude");
+  const latitude = latRaw ? Number(latRaw) : null;
+  const longitude = lngRaw ? Number(lngRaw) : null;
   const description = String(form.get("description") ?? "").trim().replace(/\r\n/g, "\n");
   let poster = text(form, "poster");
   // A new picture from the form (components/admin/poster-field.tsx) wins over the path field
@@ -91,6 +131,10 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     return { error: "ลิงก์ (slug) ใช้ได้แค่ a–z, 0–9 และขีด - เช่น midnight-echo-2026" };
   if (!organizer || organizer.length > 120) return { error: "กรอกชื่อผู้จัด (ไม่เกิน 120 ตัวอักษร)" };
   if (!venue || venue.length > 200) return { error: "กรอกสถานที่ (ไม่เกิน 200 ตัวอักษร)" };
+  if (venueArea.length > 120) return { error: "เขต / จังหวัด ยาวเกิน 120 ตัวอักษร" };
+  if ((latitude === null) !== (longitude === null)) return { error: "หมุดแผนที่ไม่ครบ ลองวางลิงก์ใหม่อีกครั้ง" };
+  if (latitude !== null && longitude !== null && !(Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180))
+    return { error: "พิกัดหมุดแผนที่ไม่ถูกต้อง" };
   if (description.length > 5000) return { error: "รายละเอียดยาวเกิน 5,000 ตัวอักษร" };
   if (!upload && !isPosterSrc(poster)) return { error: "อัปโหลดโปสเตอร์ หรือเลือกรูปที่มีในเว็บก่อน (ที่อยู่รูปเองต้องเป็น /posters/x.svg หรือ https://)" };
   if (!startsAt || !doorsAt || !salesStartAt || salesEndAt === undefined) return { error: "กรอกวันและเวลาให้ครบ" };
@@ -101,17 +145,19 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   if (!Number.isInteger(maxPerOrder) || maxPerOrder < 1 || maxPerOrder > 20) return { error: "จำกัดต่อบัญชีต้องเป็น 1–20 ใบ" };
   const zones = parseZones(String(form.get("zones") ?? ""));
   if (typeof zones === "string") return { error: zones };
+  const galleryInput = parseGallery(form);
+  if ("error" in galleryInput) return galleryInput;
 
   const db = getDb();
   const [taken] = await db.select({ id: events.id }).from(events).where(eq(events.slug, slug)).limit(1);
   if (taken && taken.id !== id) return { error: "ลิงก์ (slug) นี้มีอีเวนต์อื่นใช้แล้ว" };
 
-  let oldPoster: string | null = null;
+  let oldPictures: string[] = [];
   let savedZones: (typeof ticketZones.$inferSelect)[] = [];
   if (id) {
-    const [existing] = await db.select({ poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
+    const [existing] = await db.select({ poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
     if (!existing) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
-    oldPoster = existing.poster;
+    oldPictures = [existing.poster, ...existing.gallery];
     // A zone people have bought into can't go away, or shrink below what's sold
     savedZones = await db.select().from(ticketZones).where(eq(ticketZones.eventId, id));
   }
@@ -124,14 +170,32 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     if (saved && zone.capacity < saved.sold) return { error: `โซน "${zone.name}" ขายไปแล้ว ${saved.sold} ใบ ตั้งจำนวนบัตรต่ำกว่านั้นไม่ได้` };
   }
 
-  // The picture is stored last, once nothing else can turn the save down
+  // The pictures are stored last, once nothing else can turn the save down. Any stored for a save that
+  // then fails go again
+  const stored: string[] = [];
+  const discard = async (error: string): Promise<SaveEventState> => {
+    await Promise.all(stored.map(deleteUploadedImage));
+    return { error };
+  };
   if (upload) {
-    const stored = await saveUploadedImage(upload, "posters");
-    if (!stored.ok) return { error: stored.error };
-    poster = stored.path;
+    const saved = await saveUploadedImage(upload, "posters");
+    if (!saved.ok) return discard(saved.error);
+    poster = saved.path;
+    stored.push(poster);
+  }
+  const gallery: string[] = [];
+  for (const entry of galleryInput.entries) {
+    if (typeof entry === "string") {
+      gallery.push(entry);
+      continue;
+    }
+    const saved = await saveUploadedImage(entry, "gallery");
+    if (!saved.ok) return discard(`รูปเพิ่มเติม: ${saved.error}`);
+    gallery.push(saved.path);
+    stored.push(saved.path);
   }
 
-  const values = { title, slug, organizer, venue, description, poster, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
+  const values = { title, slug, organizer, venue, venueArea, latitude, longitude, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
   const queries: BatchItem<"pg">[] = [];
   let eventId = id;
 
@@ -150,7 +214,7 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
 
   const zoneIds = zones.map((zone) => zone.id ?? uuidv7());
   zones.forEach((zone, position) => {
-    const row = { name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, position };
+    const row = { name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, tokens: zone.tokens, position };
     queries.push(
       zone.id
         ? db
@@ -166,22 +230,27 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
   } catch (e) {
     console.error("[saveEvent]", e);
-    if (upload) await deleteUploadedImage(poster);
-    return { error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง" };
+    return discard("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
   }
   updateTag(EVENTS_TAG);
-  if (oldPoster && oldPoster !== poster) await dropIfUnused(oldPoster);
+  const now = new Set([poster, ...gallery]);
+  await dropIfUnused(oldPictures.filter((picture) => !now.has(picture)));
 
   if (!id) redirect(`/admin/events/${eventId}?created=1`);
   refresh();
-  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster };
+  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster, gallery };
 }
 
-/** An uploaded poster no event shows any more is deleted (ทำสำเนา shares one picture between events) */
-async function dropIfUnused(poster: string) {
-  if (!isUploadPath(poster)) return;
-  const [used] = await getDb().select({ id: events.id }).from(events).where(eq(events.poster, poster)).limit(1);
-  if (!used) await deleteUploadedImage(poster);
+/** Uploaded pictures no event shows any more are deleted (ทำสำเนา shares pictures between events) */
+async function dropIfUnused(pictures: string[]) {
+  for (const picture of pictures.filter(isUploadPath)) {
+    const [used] = await getDb()
+      .select({ id: events.id })
+      .from(events)
+      .where(or(eq(events.poster, picture), sql`${picture} = any(${events.gallery})`))
+      .limit(1);
+    if (!used) await deleteUploadedImage(picture);
+  }
 }
 
 /** ทำสำเนา: a draft copy with the same details and zones, nothing sold, then straight to editing it */
@@ -202,8 +271,12 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
   const copy = {
     organizer: source.organizer,
     venue: source.venue,
+    venueArea: source.venueArea,
+    latitude: source.latitude,
+    longitude: source.longitude,
     description: source.description,
     poster: source.poster,
+    gallery: source.gallery,
     startsAt: source.startsAt,
     doorsAt: source.doorsAt,
     salesStartAt: source.salesStartAt,
@@ -214,7 +287,7 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
   if (zones.length)
     queries.push(
       db.insert(ticketZones).values(
-        zones.map((zone) => ({ eventId: id, name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, position: zone.position })),
+        zones.map((zone) => ({ eventId: id, name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, tokens: zone.tokens, position: zone.position })),
       ),
     );
   await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
@@ -227,16 +300,46 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   await requireSuperAdmin("/admin/events");
   const id = text(form, "eventId");
   const db = getDb();
-  const [target] = await db.select({ slug: events.slug, poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
+  const [target] = await db.select({ slug: events.slug, poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
   if (!target) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
   if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
   if (sold > 0) return { error: `ขายบัตรไปแล้ว ${sold} ใบ ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน` };
+  // Even lapsed or cancelled orders are a record of who tried to buy: an event with any stays, closed
+  const [hasOrders] = await db.select({ id: orders.id }).from(orders).where(eq(orders.eventId, id)).limit(1);
+  if (hasOrders) return { error: 'อีเวนต์นี้มีประวัติคำสั่งซื้อแล้ว ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน' };
 
   await db.delete(events).where(eq(events.id, id));
-  await dropIfUnused(target.poster);
+  await dropIfUnused([target.poster, ...target.gallery]);
   updateTag(EVENTS_TAG);
   if (form.get("from") === "edit") redirect("/admin/events");
   refresh();
   return { ok: "ลบอีเวนต์แล้ว" };
+}
+
+/**
+ * The pin behind a Google Maps short link (maps.app.goo.gl/…), which says nothing until it is followed.
+ * Only Google's own redirects are followed, and nothing but their Location header is read, so this
+ * can't be used to fetch anything else.
+ */
+export async function resolveMapLink(link: string): Promise<Pin | null> {
+  await requireSuperAdmin("/admin/events");
+  if (!isShortMapLink(link)) return null;
+  let url = link.trim();
+  for (let hop = 0; hop < 5; hop++) {
+    const found = parsePin(url);
+    if (found) return found;
+    let next: string | null;
+    try {
+      const res = await fetch(url, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(5000) });
+      next = res.headers.get("location");
+    } catch {
+      return null;
+    }
+    if (!next) return null;
+    const target = new URL(next, url);
+    if (target.protocol !== "https:" || !/(^|\.)(google\.[a-z.]+|goo\.gl)$/i.test(target.hostname)) return null;
+    url = target.toString();
+  }
+  return parsePin(url);
 }

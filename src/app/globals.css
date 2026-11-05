@@ -530,3 +530,14 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Share buttons on the event page (components/share-row.tsx): each app's own brand colour */
+:root {
+  --share-line: #06c755;
+  --share-facebook: #1877f2;
+  --share-messenger: #0084ff;
+  --share-discord: #5865f2;
+  --share-x: #000000;
+  --share-telegram: #229ed9;
+  --share-whatsapp: #25d366;
+}

@@ -12,10 +12,13 @@ import {
   PlusSignIcon,
   Settings02Icon,
   Ticket02Icon,
+  Location01Icon,
 } from "@hugeicons/core-free-icons";
 import { saveEvent } from "@/app/actions/admin-events";
 import { PUBLISH } from "@/components/admin/event-status";
 import { DateTimeField } from "@/components/admin/date-time-field";
+import { MapPinField } from "@/components/admin/map-pin-field";
+import { GalleryField, savedItem, type GalleryItem } from "@/components/admin/gallery-field";
 import { PosterField, type PickedPoster } from "@/components/admin/poster-field";
 import { Choices, Notice, hint, label } from "@/components/admin/form";
 import { card, iconButton, input, pill, pillPrimary, tile } from "@/components/admin/ui";
@@ -27,7 +30,7 @@ import { PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/event-fie
 // zones in one form, saved together by saveEvent. The form is submitted by hand (onSubmit) rather than
 // through `action`, so a failed save keeps what was typed instead of React resetting the fields.
 
-export type EventFormZone = { id?: string; name: string; note: string; price: number; capacity: number; sold: number };
+export type EventFormZone = { id?: string; name: string; note: string; price: number; capacity: number; sold: number; tokens: number };
 
 export type EventFormValues = {
   id?: string;
@@ -35,8 +38,12 @@ export type EventFormValues = {
   title: string;
   organizer: string;
   venue: string;
+  venueArea: string;
+  latitude: number | null;
+  longitude: number | null;
   description: string;
   poster: string;
+  gallery: string[];
   startsAt: string;
   doorsAt: string;
   salesStartAt: string;
@@ -105,8 +112,10 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   const ids = useId();
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(event));
+  const [venue, setVenue] = useState(event?.venue ?? "");
   const [poster, setPoster] = useState(event?.poster ?? "");
   const [picked, setPicked] = useState<PickedPoster | null>(null);
+  const [gallery, setGallery] = useState<GalleryItem[]>(() => (event?.gallery ?? []).map(savedItem));
   // A new file replaces the one before it; its preview URL goes with it
   const pick = (file: File | null) =>
     setPicked((before) => {
@@ -114,7 +123,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
       return file ? { file, url: URL.createObjectURL(file) } : null;
     });
   const [zones, setZones] = useState<ZoneRow[]>(() =>
-    (event?.zones.length ? event.zones : [{ name: "บัตรทั่วไป", note: "", price: 0, capacity: 100, sold: 0 }]).map(withKey),
+    (event?.zones.length ? event.zones : [{ name: "บัตรทั่วไป", note: "", price: 0, capacity: 100, sold: 0, tokens: 0 }]).map(withKey),
   );
 
   // Zones added by the last save now exist; take their ids (once per answer) so the next save edits rather
@@ -128,6 +137,14 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
     if (state.poster) {
       setPoster(state.poster);
       pick(null);
+    }
+    // …and the gallery's new files are saved pictures now
+    const paths = state.gallery;
+    if (paths) {
+      setGallery((items) => {
+        for (const item of items) if (item.file) URL.revokeObjectURL(item.url);
+        return paths.map(savedItem);
+      });
     }
   }
 
@@ -146,8 +163,13 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity }) => ({ id, name, note, price, capacity }))));
+    form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity, tokens }) => ({ id, name, note, price, capacity, tokens }))));
     if (picked) form.set("posterFile", picked.file);
+    // Saved pictures go by path; new ones as files, each pointed at by its place among them
+    let n = 0;
+    const order = gallery.map((item) => (item.file ? { file: n++ } : item.path));
+    form.set("gallery", JSON.stringify(order));
+    for (const item of gallery) if (item.file) form.append("galleryFile", item.file);
     startTransition(() => action(form));
   }
 
@@ -194,7 +216,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 <input id={`${ids}-organizer`} name="organizer" required maxLength={120} defaultValue={event?.organizer} className={input} />
               </Field>
               <Field id={`${ids}-venue`} title="สถานที่">
-                <input id={`${ids}-venue`} name="venue" required maxLength={200} defaultValue={event?.venue} className={input} />
+                <input id={`${ids}-venue`} name="venue" required maxLength={200} value={venue} onChange={(e) => setVenue(e.target.value)} className={input} />
               </Field>
             </div>
             <Field id={`${ids}-description`} title="รายละเอียดงาน" note="เว้นบรรทัดว่างเพื่อขึ้นย่อหน้าใหม่">
@@ -207,6 +229,15 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 className={`${input} h-auto resize-y py-2.5 leading-relaxed`}
               />
             </Field>
+          </Section>
+
+          <Section icon={Location01Icon} title="แผนที่" subtitle="หมุดสถานที่จัดงาน แสดงในหน้าอีเวนต์">
+            <MapPinField
+              id={`${ids}-map`}
+              venue={venue}
+              defaultArea={event?.venueArea ?? ""}
+              defaultPin={event?.latitude != null && event.longitude != null ? { lat: event.latitude, lng: event.longitude } : null}
+            />
           </Section>
 
           <Section icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">
@@ -312,6 +343,24 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                         className={`${input} tabular-nums`}
                       />
                     </Field>
+                    <Field
+                      id={`${ids}-zone-${zone.key}-tokens`}
+                      title="โทเคนต่อใบ (แลกสินค้าในงาน)"
+                      note={zone.tokens > 0 && zone.price > 0 ? `≈ 1 โทเคนต่อ ฿${baht.format(Math.round((zone.price / zone.tokens) * 100) / 100)}` : "0 = ไม่แถมโทเคน"}
+                    >
+                      <input
+                        id={`${ids}-zone-${zone.key}-tokens`}
+                        type="number"
+                        inputMode="numeric"
+                        required
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        value={Number.isNaN(zone.tokens) ? "" : zone.tokens}
+                        onChange={(e) => update(zone.key, { tokens: e.target.valueAsNumber })}
+                        className={`${input} tabular-nums`}
+                      />
+                    </Field>
                   </div>
                   {zone.sold > 0 && zone.capacity > 0 && (
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -324,7 +373,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             <button
               type="button"
               disabled={zones.length >= 20}
-              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, key: `added-${addedKey++}` }])}
+              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, tokens: 0, key: `added-${addedKey++}` }])}
               className={`${pill} w-full justify-center border-dashed`}
             >
               <Icon icon={PlusSignIcon} className="size-4" />
@@ -371,6 +420,10 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
           <Section icon={Image01Icon} title="โปสเตอร์" subtitle="แนวตั้ง 4:5 เช่น 800×1000">
             <input type="hidden" name="poster" value={poster} />
             <PosterField id={`${ids}-poster`} poster={poster} onPoster={setPoster} picked={picked} onPick={pick} posters={posters} />
+          </Section>
+
+          <Section icon={Image01Icon} title="รูปเพิ่มเติม" subtitle="ผังที่นั่ง เวที สถานที่ ฯลฯ (ไม่บังคับ)">
+            <GalleryField items={gallery} onChange={setGallery} />
           </Section>
         </div>
       </div>

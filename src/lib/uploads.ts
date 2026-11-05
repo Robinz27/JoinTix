@@ -19,6 +19,8 @@ const PUBLIC_ROOT = "/uploads/images";
 const BOXES = {
   // 4:5 posters; the event page shows them up to ~450px wide, so this is enough for sharp screens
   posters: { width: 1200, height: 1500, quality: 85 },
+  // More pictures of an event (stage, venue, seating plan): any shape, opened full size in the lightbox
+  gallery: { width: 1600, height: 1600, quality: 85 },
 } as const;
 export type UploadFolder = keyof typeof BOXES;
 

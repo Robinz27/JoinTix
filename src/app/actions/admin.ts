@@ -3,7 +3,7 @@
 import { and, desc, eq, gt, ne } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { getDb } from "@/db";
-import { session, user } from "@/db/schema";
+import { orders, session, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { ROLES, type Role, requireSuperAdmin } from "@/lib/session";
 
@@ -106,6 +106,9 @@ export async function deleteMember(_: AdminFormState, form: FormData): Promise<A
   const [target] = await db.select({ email: user.email }).from(user).where(eq(user.id, id)).limit(1);
   if (!target) return { error: "ไม่พบบัญชีนี้ อาจถูกลบไปแล้ว" };
   if (text(form, "confirm").toLowerCase() !== target.email) return { error: "พิมพ์อีเมลให้ตรงเพื่อยืนยัน" };
+  // Orders and tickets are kept (they're the record of what was sold), so their owner is too
+  const [bought] = await db.select({ id: orders.id }).from(orders).where(eq(orders.userId, id)).limit(1);
+  if (bought) return { error: "บัญชีนี้มีประวัติการซื้อบัตร ลบไม่ได้" };
 
   await db.delete(user).where(eq(user.id, id));
   refresh();

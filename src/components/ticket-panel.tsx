@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { InformationCircleIcon, MinusSignIcon, PlusSignIcon, Ticket02Icon } from "@hugeicons/core-free-icons";
+import { InformationCircleIcon, Loading03Icon, MinusSignIcon, PlusSignIcon, Ticket02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
+import { startCheckout } from "@/app/actions/orders";
 import { VerifyEmailCode } from "@/components/verify-email-code";
 import { authClient } from "@/lib/auth-client";
 import { isBuyable, type EventStatus } from "@/lib/event-fields";
@@ -28,6 +29,7 @@ export function TicketPanel({
   zones,
   maxPerOrder,
   salesStart,
+  children,
 }: {
   /** For coming back here after signing in */
   slug: string;
@@ -35,11 +37,16 @@ export function TicketPanel({
   zones: TicketZone[];
   maxPerOrder: number;
   salesStart: string;
+  /** Under everything else in the card (the share row) */
+  children?: React.ReactNode;
 }) {
   const onSale = isBuyable(status);
   const [zoneId, setZoneId] = useState(() => (onSale ? zones.find((zone) => zone.remaining > 0)?.id : undefined));
   const [quantity, setQuantity] = useState(1);
-  const [notice, setNotice] = useState(false);
+  const [error, setError] = useState<string>();
+  const [buying, startBuying] = useTransition();
+  // One per press of ซื้อบัตร, so a double press makes one order (lib/orders.ts)
+  const [key, setKey] = useState(() => crypto.randomUUID());
   const { data: session, isPending, refetch } = authClient.useSession();
 
   const zone = zones.find((z) => z.id === zoneId);
@@ -48,7 +55,7 @@ export function TicketPanel({
 
   function pick(id: string) {
     setZoneId(id);
-    setNotice(false);
+    setError(undefined);
     // Keep the count within what the new zone allows
     const next = zones.find((z) => z.id === id);
     if (next) setQuantity((q) => Math.min(q, Math.min(maxPerOrder, next.remaining)));
@@ -100,6 +107,7 @@ export function TicketPanel({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-foreground">{z.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">{z.note}</span>
+                {z.tokens > 0 && <span className="mt-0.5 block text-2xs font-medium text-amber-600 dark:text-amber-400">+{baht.format(z.tokens)} โทเคน / ใบ</span>}
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-sm font-medium text-foreground">{price(z.price)}</span>
@@ -149,6 +157,12 @@ export function TicketPanel({
               </span>
               <span className="tabular-nums">{price(zone.price * quantity)}</span>
             </div>
+            {zone.tokens > 0 && (
+              <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                <span>ได้รับโทเคน (แลกสินค้าในงาน)</span>
+                <span className="tabular-nums">+{baht.format(zone.tokens * quantity)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-medium text-foreground">
               <span>รวม</span>
               <span className="tabular-nums">{price(total)}</span>
@@ -177,22 +191,29 @@ export function TicketPanel({
         ) : (
           <button
             type="button"
-            disabled={!zone}
-            onClick={() => setNotice(true)}
+            disabled={!zone || buying}
+            onClick={() =>
+              startBuying(async () => {
+                setError(undefined);
+                const result = await startCheckout({ slug, zoneId: zone!.id, quantity, key });
+                // Only an answer that isn't the redirect to checkout arrives here
+                if (result?.error) setError(result.error);
+                setKey(crypto.randomUUID());
+              })
+            }
             className="btn-buy flex h-11 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-medium disabled:cursor-not-allowed"
           >
-            <Icon icon={Ticket02Icon} className="size-4" />
-            ซื้อบัตร
+            <Icon icon={buying ? Loading03Icon : Ticket02Icon} className={`size-4 ${buying ? "animate-spin" : ""}`} />
+            {buying ? "กำลังล็อกบัตร…" : "ซื้อบัตร"}
           </button>
         )}
       </div>
 
-      <p role="status" className="mt-3 flex gap-1.5 text-xs text-muted-foreground">
+      <p role="status" className={`mt-3 flex gap-1.5 text-xs ${error ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
         <Icon icon={InformationCircleIcon} className="mt-px size-3.5 shrink-0" />
-        {notice
-          ? "ระบบจองและชำระเงินยังอยู่ระหว่างพัฒนา เร็วๆ นี้จะกดต่อไปหน้าชำระเงินได้"
-          : "กดซื้อแล้วระบบจะล็อกบัตรไว้ให้ 10 นาที ระหว่างชำระเงิน"}
+        {error ?? "กดซื้อแล้วระบบจะล็อกบัตรไว้ให้ 10 นาที ระหว่างชำระเงิน"}
       </p>
+      {children}
     </div>
   );
 }
