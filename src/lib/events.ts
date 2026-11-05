@@ -45,6 +45,10 @@ export type EventDetail = EventSummary & {
   /** ISO date-time sales start, shown while the event is coming soon */
   salesStartAt: string;
   description: string[];
+  /** The district / province under the venue's name; may be empty */
+  venueArea: string;
+  /** The venue's map pin, when the event has one */
+  pin: { lat: number; lng: number } | null;
   /** Every picture of the event, the poster first */
   images: string[];
   /** Most tickets one account may take per order (anti-scalper) */
@@ -146,6 +150,8 @@ export async function getEvent(slug: string): Promise<EventDetail | undefined> {
       .split(/\n\s*\n/)
       .map((paragraph) => paragraph.trim())
       .filter(Boolean),
+    venueArea: event.venueArea,
+    pin: event.latitude != null && event.longitude != null ? { lat: event.latitude, lng: event.longitude } : null,
     images: [event.poster, ...event.gallery],
     maxPerOrder: event.maxPerOrder,
     zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold })),

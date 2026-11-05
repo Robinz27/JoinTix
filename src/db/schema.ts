@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, doublePrecision, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // Better Auth's core tables (src/lib/auth.ts), in its default shape: singular names, text ids it generates
 // itself. Then events and their ticket zones (หลังบ้าน /admin/events); seat, ticket and order tables come
@@ -97,6 +97,11 @@ export const events = pgTable(
     title: text("title").notNull(),
     organizer: text("organizer").notNull(),
     venue: text("venue").notNull(),
+    /** The district / province under the venue's name (เมืองทองธานี นนทบุรี); empty when not given */
+    venueArea: text("venue_area").default("").notNull(),
+    /** The venue's map pin (WGS84, as Google Maps gives it); both empty when the event has no pin */
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     /** Paragraphs split by a blank line */
     description: text("description").default("").notNull(),
     /** 4:5 poster, a path under public/ (/posters/x.svg) or an https URL */

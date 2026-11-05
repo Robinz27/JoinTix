@@ -12,10 +12,12 @@ import {
   PlusSignIcon,
   Settings02Icon,
   Ticket02Icon,
+  Location01Icon,
 } from "@hugeicons/core-free-icons";
 import { saveEvent } from "@/app/actions/admin-events";
 import { PUBLISH } from "@/components/admin/event-status";
 import { DateTimeField } from "@/components/admin/date-time-field";
+import { MapPinField } from "@/components/admin/map-pin-field";
 import { GalleryField, savedItem, type GalleryItem } from "@/components/admin/gallery-field";
 import { PosterField, type PickedPoster } from "@/components/admin/poster-field";
 import { Choices, Notice, hint, label } from "@/components/admin/form";
@@ -36,6 +38,9 @@ export type EventFormValues = {
   title: string;
   organizer: string;
   venue: string;
+  venueArea: string;
+  latitude: number | null;
+  longitude: number | null;
   description: string;
   poster: string;
   gallery: string[];
@@ -107,6 +112,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   const ids = useId();
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(event));
+  const [venue, setVenue] = useState(event?.venue ?? "");
   const [poster, setPoster] = useState(event?.poster ?? "");
   const [picked, setPicked] = useState<PickedPoster | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>(() => (event?.gallery ?? []).map(savedItem));
@@ -210,7 +216,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 <input id={`${ids}-organizer`} name="organizer" required maxLength={120} defaultValue={event?.organizer} className={input} />
               </Field>
               <Field id={`${ids}-venue`} title="สถานที่">
-                <input id={`${ids}-venue`} name="venue" required maxLength={200} defaultValue={event?.venue} className={input} />
+                <input id={`${ids}-venue`} name="venue" required maxLength={200} value={venue} onChange={(e) => setVenue(e.target.value)} className={input} />
               </Field>
             </div>
             <Field id={`${ids}-description`} title="รายละเอียดงาน" note="เว้นบรรทัดว่างเพื่อขึ้นย่อหน้าใหม่">
@@ -223,6 +229,15 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 className={`${input} h-auto resize-y py-2.5 leading-relaxed`}
               />
             </Field>
+          </Section>
+
+          <Section icon={Location01Icon} title="แผนที่" subtitle="หมุดสถานที่จัดงาน แสดงในหน้าอีเวนต์">
+            <MapPinField
+              id={`${ids}-map`}
+              venue={venue}
+              defaultArea={event?.venueArea ?? ""}
+              defaultPin={event?.latitude != null && event.longitude != null ? { lat: event.latitude, lng: event.longitude } : null}
+            />
           </Section>
 
           <Section icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">

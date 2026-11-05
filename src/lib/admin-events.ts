@@ -17,6 +17,9 @@ export type AdminEvent = {
   title: string;
   organizer: string;
   venue: string;
+  venueArea: string;
+  latitude: number | null;
+  longitude: number | null;
   description: string;
   poster: string;
   startsAt: string;

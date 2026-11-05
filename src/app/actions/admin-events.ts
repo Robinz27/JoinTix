@@ -9,6 +9,7 @@ import { events, ticketZones } from "@/db/schema";
 import type { AdminFormState } from "@/app/actions/admin";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
 import { MAX_GALLERY } from "@/lib/event-fields";
+import { isShortMapLink, parsePin, type Pin } from "@/lib/map";
 import { isPosterSrc } from "@/lib/poster";
 import { requireSuperAdmin } from "@/lib/session";
 import { deleteUploadedImage, isUploadPath, saveUploadedImage } from "@/lib/uploads";
@@ -103,6 +104,12 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   const slug = text(form, "slug").toLowerCase();
   const organizer = text(form, "organizer");
   const venue = text(form, "venue");
+  const venueArea = text(form, "venueArea");
+  // Both or neither: a pin is a point, half of one is nothing
+  const latRaw = text(form, "latitude");
+  const lngRaw = text(form, "longitude");
+  const latitude = latRaw ? Number(latRaw) : null;
+  const longitude = lngRaw ? Number(lngRaw) : null;
   const description = String(form.get("description") ?? "").trim().replace(/\r\n/g, "\n");
   let poster = text(form, "poster");
   // A new picture from the form (components/admin/poster-field.tsx) wins over the path field
@@ -122,6 +129,10 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     return { error: "ลิงก์ (slug) ใช้ได้แค่ a–z, 0–9 และขีด - เช่น midnight-echo-2026" };
   if (!organizer || organizer.length > 120) return { error: "กรอกชื่อผู้จัด (ไม่เกิน 120 ตัวอักษร)" };
   if (!venue || venue.length > 200) return { error: "กรอกสถานที่ (ไม่เกิน 200 ตัวอักษร)" };
+  if (venueArea.length > 120) return { error: "เขต / จังหวัด ยาวเกิน 120 ตัวอักษร" };
+  if ((latitude === null) !== (longitude === null)) return { error: "หมุดแผนที่ไม่ครบ ลองวางลิงก์ใหม่อีกครั้ง" };
+  if (latitude !== null && longitude !== null && !(Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180))
+    return { error: "พิกัดหมุดแผนที่ไม่ถูกต้อง" };
   if (description.length > 5000) return { error: "รายละเอียดยาวเกิน 5,000 ตัวอักษร" };
   if (!upload && !isPosterSrc(poster)) return { error: "อัปโหลดโปสเตอร์ หรือเลือกรูปที่มีในเว็บก่อน (ที่อยู่รูปเองต้องเป็น /posters/x.svg หรือ https://)" };
   if (!startsAt || !doorsAt || !salesStartAt || salesEndAt === undefined) return { error: "กรอกวันและเวลาให้ครบ" };
@@ -182,7 +193,7 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     stored.push(saved.path);
   }
 
-  const values = { title, slug, organizer, venue, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
+  const values = { title, slug, organizer, venue, venueArea, latitude, longitude, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
   const queries: BatchItem<"pg">[] = [];
   let eventId = id;
 
@@ -258,6 +269,9 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
   const copy = {
     organizer: source.organizer,
     venue: source.venue,
+    venueArea: source.venueArea,
+    latitude: source.latitude,
+    longitude: source.longitude,
     description: source.description,
     poster: source.poster,
     gallery: source.gallery,
@@ -296,4 +310,31 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   if (form.get("from") === "edit") redirect("/admin/events");
   refresh();
   return { ok: "ลบอีเวนต์แล้ว" };
+}
+
+/**
+ * The pin behind a Google Maps short link (maps.app.goo.gl/…), which says nothing until it is followed.
+ * Only Google's own redirects are followed, and nothing but their Location header is read, so this
+ * can't be used to fetch anything else.
+ */
+export async function resolveMapLink(link: string): Promise<Pin | null> {
+  await requireSuperAdmin("/admin/events");
+  if (!isShortMapLink(link)) return null;
+  let url = link.trim();
+  for (let hop = 0; hop < 5; hop++) {
+    const found = parsePin(url);
+    if (found) return found;
+    let next: string | null;
+    try {
+      const res = await fetch(url, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(5000) });
+      next = res.headers.get("location");
+    } catch {
+      return null;
+    }
+    if (!next) return null;
+    const target = new URL(next, url);
+    if (target.protocol !== "https:" || !/(^|\.)(google\.[a-z.]+|goo\.gl)$/i.test(target.hostname)) return null;
+    url = target.toString();
+  }
+  return parsePin(url);
 }
