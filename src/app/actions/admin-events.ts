@@ -10,6 +10,7 @@ import type { AdminFormState } from "@/app/actions/admin";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
 import { isPosterSrc } from "@/lib/poster";
 import { requireSuperAdmin } from "@/lib/session";
+import { deleteUploadedImage, isUploadPath, saveUploadedImage } from "@/lib/uploads";
 import { uuidv7 } from "@/lib/uuid";
 
 // หลังบ้าน's event actions (app/admin/events, components/admin/event-form.tsx). Each checks for a super admin
@@ -57,7 +58,11 @@ function parseZones(raw: string): ZoneInput[] | string {
 }
 
 /** What saveEvent answers with: also each zone's id in form order, so new zones are known on the next save */
-export type SaveEventState = AdminFormState & { zoneIds?: string[] };
+export type SaveEventState = AdminFormState & {
+  zoneIds?: string[];
+  /** The poster as saved, an uploaded picture's new path included, so the form stops sending the file */
+  poster?: string;
+};
 
 /** สร้าง / แก้ไขอีเวนต์: every field of the event and its whole list of zones, written together */
 export async function saveEvent(_: SaveEventState, form: FormData): Promise<SaveEventState> {
@@ -68,7 +73,10 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   const organizer = text(form, "organizer");
   const venue = text(form, "venue");
   const description = String(form.get("description") ?? "").trim().replace(/\r\n/g, "\n");
-  const poster = text(form, "poster");
+  let poster = text(form, "poster");
+  // A new picture from the form (components/admin/poster-field.tsx) wins over the path field
+  const file = form.get("posterFile");
+  const upload = file instanceof File && file.size > 0 ? file : null;
   const startsAt = thaiTime(text(form, "startsAt"));
   const doorsAt = thaiTime(text(form, "doorsAt"));
   const salesStartAt = thaiTime(text(form, "salesStartAt"));
@@ -84,7 +92,7 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   if (!organizer || organizer.length > 120) return { error: "กรอกชื่อผู้จัด (ไม่เกิน 120 ตัวอักษร)" };
   if (!venue || venue.length > 200) return { error: "กรอกสถานที่ (ไม่เกิน 200 ตัวอักษร)" };
   if (description.length > 5000) return { error: "รายละเอียดยาวเกิน 5,000 ตัวอักษร" };
-  if (!isPosterSrc(poster)) return { error: "โปสเตอร์ต้องเป็น path ใน public เช่น /posters/x.svg หรือลิงก์ https://" };
+  if (!upload && !isPosterSrc(poster)) return { error: "อัปโหลดโปสเตอร์ หรือเลือกรูปที่มีในเว็บก่อน (ที่อยู่รูปเองต้องเป็น /posters/x.svg หรือ https://)" };
   if (!startsAt || !doorsAt || !salesStartAt || salesEndAt === undefined) return { error: "กรอกวันและเวลาให้ครบ" };
   if (doorsAt > startsAt) return { error: "เวลาประตูเปิดต้องไม่ช้ากว่าเวลาเริ่มงาน" };
   if (salesStartAt >= startsAt) return { error: "วันเปิดขายต้องก่อนวันงาน" };
@@ -98,23 +106,36 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   const [taken] = await db.select({ id: events.id }).from(events).where(eq(events.slug, slug)).limit(1);
   if (taken && taken.id !== id) return { error: "ลิงก์ (slug) นี้มีอีเวนต์อื่นใช้แล้ว" };
 
+  let oldPoster: string | null = null;
+  let savedZones: (typeof ticketZones.$inferSelect)[] = [];
+  if (id) {
+    const [existing] = await db.select({ poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
+    if (!existing) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
+    oldPoster = existing.poster;
+    // A zone people have bought into can't go away, or shrink below what's sold
+    savedZones = await db.select().from(ticketZones).where(eq(ticketZones.eventId, id));
+  }
+  const kept = new Set(zones.map((zone) => zone.id).filter(Boolean));
+  const dropped = savedZones.find((zone) => !kept.has(zone.id) && zone.sold > 0);
+  if (dropped) return { error: `ลบโซน "${dropped.name}" ไม่ได้ เพราะขายไปแล้ว ${dropped.sold} ใบ` };
+  for (const zone of zones) {
+    const saved = savedZones.find((row) => row.id === zone.id);
+    if (zone.id && !saved) return { error: "มีโซนที่ถูกลบไปแล้ว รีเฟรชหน้าแล้วลองใหม่" };
+    if (saved && zone.capacity < saved.sold) return { error: `โซน "${zone.name}" ขายไปแล้ว ${saved.sold} ใบ ตั้งจำนวนบัตรต่ำกว่านั้นไม่ได้` };
+  }
+
+  // The picture is stored last, once nothing else can turn the save down
+  if (upload) {
+    const stored = await saveUploadedImage(upload, "posters");
+    if (!stored.ok) return { error: stored.error };
+    poster = stored.path;
+  }
+
   const values = { title, slug, organizer, venue, description, poster, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
   const queries: BatchItem<"pg">[] = [];
   let eventId = id;
 
   if (id) {
-    const [existing] = await db.select({ id: events.id }).from(events).where(eq(events.id, id)).limit(1);
-    if (!existing) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
-    // A zone people have bought into can't go away, or shrink below what's sold
-    const saved = await db.select().from(ticketZones).where(eq(ticketZones.eventId, id));
-    const kept = new Set(zones.map((zone) => zone.id).filter(Boolean));
-    const dropped = saved.find((zone) => !kept.has(zone.id) && zone.sold > 0);
-    if (dropped) return { error: `ลบโซน "${dropped.name}" ไม่ได้ เพราะขายไปแล้ว ${dropped.sold} ใบ` };
-    for (const zone of zones) {
-      const before = saved.find((row) => row.id === zone.id);
-      if (zone.id && !before) return { error: "มีโซนที่ถูกลบไปแล้ว รีเฟรชหน้าแล้วลองใหม่" };
-      if (before && zone.capacity < before.sold) return { error: `โซน "${zone.name}" ขายไปแล้ว ${before.sold} ใบ ตั้งจำนวนบัตรต่ำกว่านั้นไม่ได้` };
-    }
     queries.push(db.update(events).set(values).where(eq(events.id, id)));
     const keepIds = [...kept] as string[];
     queries.push(
@@ -141,12 +162,26 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   });
 
   // One round trip, in one transaction: the event and its zones change together or not at all
-  await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
+  try {
+    await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
+  } catch (e) {
+    console.error("[saveEvent]", e);
+    if (upload) await deleteUploadedImage(poster);
+    return { error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง" };
+  }
   updateTag(EVENTS_TAG);
+  if (oldPoster && oldPoster !== poster) await dropIfUnused(oldPoster);
 
   if (!id) redirect(`/admin/events/${eventId}?created=1`);
   refresh();
-  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds };
+  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster };
+}
+
+/** An uploaded poster no event shows any more is deleted (ทำสำเนา shares one picture between events) */
+async function dropIfUnused(poster: string) {
+  if (!isUploadPath(poster)) return;
+  const [used] = await getDb().select({ id: events.id }).from(events).where(eq(events.poster, poster)).limit(1);
+  if (!used) await deleteUploadedImage(poster);
 }
 
 /** ทำสำเนา: a draft copy with the same details and zones, nothing sold, then straight to editing it */
@@ -192,13 +227,14 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   await requireSuperAdmin("/admin/events");
   const id = text(form, "eventId");
   const db = getDb();
-  const [target] = await db.select({ slug: events.slug }).from(events).where(eq(events.id, id)).limit(1);
+  const [target] = await db.select({ slug: events.slug, poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
   if (!target) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
   if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
   if (sold > 0) return { error: `ขายบัตรไปแล้ว ${sold} ใบ ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน` };
 
   await db.delete(events).where(eq(events.id, id));
+  await dropIfUnused(target.poster);
   updateTag(EVENTS_TAG);
   if (form.get("from") === "edit") redirect("/admin/events");
   refresh();

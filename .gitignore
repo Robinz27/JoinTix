@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# uploaded pictures (lib/uploads.ts), runtime data, never committed
+/storage/

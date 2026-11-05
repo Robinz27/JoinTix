@@ -1,7 +1,6 @@
 "use client";
 
 import { startTransition, useActionState, useId, useState } from "react";
-import Image from "next/image";
 import {
   ArrowDown01Icon,
   ArrowUp01Icon,
@@ -16,12 +15,13 @@ import {
 } from "@hugeicons/core-free-icons";
 import { saveEvent } from "@/app/actions/admin-events";
 import { PUBLISH } from "@/components/admin/event-status";
+import { DateTimeField } from "@/components/admin/date-time-field";
+import { PosterField, type PickedPoster } from "@/components/admin/poster-field";
 import { Choices, Notice, hint, label } from "@/components/admin/form";
 import { card, iconButton, input, pill, pillPrimary, tile } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { Hint } from "@/components/ui/hint";
 import { PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/event-fields";
-import { isPosterSrc, isRemote } from "@/lib/poster";
 
 // สร้าง / แก้ไขอีเวนต์ (app/admin/events/new, app/admin/events/[id]): every field of an event and its ticket
 // zones in one form, saved together by saveEvent. The form is submitted by hand (onSubmit) rather than
@@ -50,8 +50,10 @@ export type EventFormValues = {
 type ZoneRow = EventFormZone & { key: string };
 
 const baht = new Intl.NumberFormat("th-TH");
-let nextKey = 0;
-const withKey = (zone: EventFormZone): ZoneRow => ({ ...zone, key: zone.id ?? `new-${nextKey++}` });
+// Keys for zones not saved yet. The first ones go by position, so the server's HTML and the browser agree
+// (a module-wide counter would have counted on in each and broken hydration); ones added later count from here
+let addedKey = 0;
+const withKey = (zone: EventFormZone, i: number): ZoneRow => ({ ...zone, key: zone.id ?? `start-${i}` });
 
 /** An ISO time as a datetime-local value in Thai time ("2026-12-14T19:00") */
 function toInput(iso: string | null) {
@@ -103,7 +105,14 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   const ids = useId();
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(event));
-  const [poster, setPoster] = useState(event?.poster ?? posters[0] ?? "");
+  const [poster, setPoster] = useState(event?.poster ?? "");
+  const [picked, setPicked] = useState<PickedPoster | null>(null);
+  // A new file replaces the one before it; its preview URL goes with it
+  const pick = (file: File | null) =>
+    setPicked((before) => {
+      if (before) URL.revokeObjectURL(before.url);
+      return file ? { file, url: URL.createObjectURL(file) } : null;
+    });
   const [zones, setZones] = useState<ZoneRow[]>(() =>
     (event?.zones.length ? event.zones : [{ name: "บัตรทั่วไป", note: "", price: 0, capacity: 100, sold: 0 }]).map(withKey),
   );
@@ -115,11 +124,15 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
     setSeen(state);
     const saved = state.zoneIds;
     if (saved) setZones((rows) => rows.map((row, i) => (saved[i] ? { ...row, id: saved[i] } : row)));
+    // The uploaded file is the saved poster now: keep its path, stop sending the file
+    if (state.poster) {
+      setPoster(state.poster);
+      pick(null);
+    }
   }
 
   const capacity = zones.reduce((n, zone) => n + (zone.capacity || 0), 0);
   const potential = zones.reduce((n, zone) => n + (zone.capacity || 0) * (zone.price || 0), 0);
-  const showPoster = isPosterSrc(poster);
 
   const update = (key: string, patch: Partial<EventFormZone>) => setZones((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   const move = (index: number, by: number) =>
@@ -134,6 +147,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity }) => ({ id, name, note, price, capacity }))));
+    if (picked) form.set("posterFile", picked.file);
     startTransition(() => action(form));
   }
 
@@ -197,25 +211,22 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
 
           <Section icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id={`${ids}-starts`} title="เริ่มงาน">
-                <input id={`${ids}-starts`} name="startsAt" type="datetime-local" required defaultValue={toInput(event?.startsAt ?? null)} className={input} />
-              </Field>
-              <Field id={`${ids}-doors`} title="ประตูเปิด">
-                <input id={`${ids}-doors`} name="doorsAt" type="datetime-local" required defaultValue={toInput(event?.doorsAt ?? null)} className={input} />
-              </Field>
-              <Field id={`${ids}-sales-start`} title="เปิดขายบัตร" note="ก่อนเวลานี้หน้าเว็บขึ้นว่ารอเปิดขาย">
-                <input
-                  id={`${ids}-sales-start`}
-                  name="salesStartAt"
-                  type="datetime-local"
-                  required
-                  defaultValue={toInput(event?.salesStartAt ?? null)}
-                  className={input}
-                />
-              </Field>
-              <Field id={`${ids}-sales-end`} title="ปิดขายบัตร (ไม่บังคับ)" note="เว้นว่าง = ขายจนถึงเวลาเริ่มงาน">
-                <input id={`${ids}-sales-end`} name="salesEndAt" type="datetime-local" defaultValue={toInput(event?.salesEndAt ?? null)} className={input} />
-              </Field>
+              <DateTimeField id={`${ids}-starts`} name="startsAt" label="เริ่มงาน" defaultValue={toInput(event?.startsAt ?? null)} />
+              <DateTimeField id={`${ids}-doors`} name="doorsAt" label="ประตูเปิด" defaultValue={toInput(event?.doorsAt ?? null)} />
+              <DateTimeField
+                id={`${ids}-sales-start`}
+                name="salesStartAt"
+                label="เปิดขายบัตร"
+                note="ก่อนเวลานี้หน้าเว็บขึ้นว่ารอเปิดขาย"
+                defaultValue={toInput(event?.salesStartAt ?? null)}
+              />
+              <DateTimeField
+                id={`${ids}-sales-end`}
+                name="salesEndAt"
+                label="ปิดขายบัตร"
+                optional="ขายจนถึงเวลาเริ่มงาน"
+                defaultValue={toInput(event?.salesEndAt ?? null)}
+              />
             </div>
           </Section>
 
@@ -313,7 +324,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             <button
               type="button"
               disabled={zones.length >= 20}
-              onClick={() => setZones((rows) => [...rows, withKey({ name: "", note: "", price: 0, capacity: 100, sold: 0 })])}
+              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, key: `added-${addedKey++}` }])}
               className={`${pill} w-full justify-center border-dashed`}
             >
               <Icon icon={PlusSignIcon} className="size-4" />
@@ -358,45 +369,8 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
           </Section>
 
           <Section icon={Image01Icon} title="โปสเตอร์" subtitle="แนวตั้ง 4:5 เช่น 800×1000">
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-60 overflow-hidden rounded-xl border border-border bg-secondary">
-              {showPoster ? (
-                <Image key={poster} src={poster} alt="ตัวอย่างโปสเตอร์" fill sizes="240px" unoptimized={isRemote(poster)} className="object-cover" />
-              ) : (
-                <span className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">ยังไม่มีรูป</span>
-              )}
-            </div>
-            <Field id={`${ids}-poster`} title="ที่อยู่รูป" note="ไฟล์ใน public/ เช่น /posters/x.svg หรือลิงก์ https://">
-              <input
-                id={`${ids}-poster`}
-                name="poster"
-                required
-                value={poster}
-                onChange={(e) => setPoster(e.target.value.trim())}
-                placeholder="/posters/my-event.jpg"
-                className={input}
-              />
-            </Field>
-            {posters.length > 0 && (
-              <div>
-                <p className={label}>เลือกจากรูปที่มีในเว็บ</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {posters.map((src) => (
-                    <button
-                      key={src}
-                      type="button"
-                      onClick={() => setPoster(src)}
-                      aria-label={`ใช้ ${src}`}
-                      aria-pressed={poster === src}
-                      className={`relative aspect-[4/5] overflow-hidden rounded-lg border bg-secondary transition-colors ${
-                        poster === src ? "border-foreground ring-1 ring-foreground" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <Image src={src} alt="" fill sizes="64px" className="object-cover" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <input type="hidden" name="poster" value={poster} />
+            <PosterField id={`${ids}-poster`} poster={poster} onPoster={setPoster} picked={picked} onPick={pick} posters={posters} />
           </Section>
         </div>
       </div>

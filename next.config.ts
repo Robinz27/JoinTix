@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ["*.trycloudflare.com"],
+      // A poster comes up with the event form (lib/uploads.ts takes up to 10 MB; the browser shrinks it first)
+      bodySizeLimit: "11mb",
     },
   },
   turbopack: {
