@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import jsQR from "jsqr";
 import {
   Alert02Icon,
+  ArrowRight01Icon,
   Camera01Icon,
   CancelCircleIcon,
   CheckmarkCircle02Icon,
@@ -12,34 +14,77 @@ import {
   QrCode01Icon,
   Search01Icon,
   Ticket02Icon,
+  Undo02Icon,
   UserCheck01Icon,
 } from "@hugeicons/core-free-icons";
-import { admitTicket, scanTicket } from "@/app/actions/orders";
+import { admitTicket, doorFeed, scanTicket, undoAdmit } from "@/app/actions/orders";
+import { ScanBadge } from "@/components/admin/scan-badge";
 import { card, input, pill, pillPrimary } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
-import type { ScanResult } from "@/lib/orders";
+import type { DoorEvent, DoorScan, DoorStats, LogEntry } from "@/lib/checkins";
 
-// สแกนบัตร at the door: the back camera reads a ticket's QR (jsQR, which every phone's browser can run,
-// iPhones included), or the code under it is typed in; the ticket then shows with its holder in full,
-// and "ให้เข้างาน" lets them in once. Camera needs https (the tunnel) or localhost.
+// สแกนบัตร at the door: choose the event at this door, then the back camera reads a ticket's QR (jsQR, which
+// every phone's browser can run, iPhones included) or the code under it is typed in. The ticket shows with
+// its holder in full; "ให้เข้างาน" lets them in once, a ticket for another event is refused, and a mistake
+// can be undone. Under the camera: how many are in, and the latest scans (scan_logs). Camera needs https
+// (the tunnel) or localhost.
 
-type Outcome = { scanned: string; result: ScanResult | null; admitted?: boolean };
+type Outcome = DoorScan & { scanned: string; undone?: boolean };
 
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
+const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Bangkok" });
+const day = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 const num = new Intl.NumberFormat("th-TH");
 const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${num.format(n)}`);
+const DOOR_KEY = "jointix-door-event";
 
-export function TicketScanner() {
+export function TicketScanner({ events, initialEvent }: { events: DoorEvent[]; initialEvent: string | null }) {
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const busy = useRef(false);
+  const [door, setDoor] = useState<string | null>(initialEvent);
   const [camera, setCamera] = useState<"off" | "starting" | "on">("off");
   const [cameraError, setCameraError] = useState<string>();
   const [typed, setTyped] = useState("");
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [feed, setFeed] = useState<{ stats: DoorStats | null; log: LogEntry[] }>({ stats: null, log: [] });
   const [checking, startChecking] = useTransition();
-  const [admitting, startAdmitting] = useTransition();
+  const [working, startWorking] = useTransition();
+
+  const reload = useCallback(() => {
+    doorFeed(door)
+      .then(setFeed)
+      .catch(() => {});
+  }, [door]);
+
+  // The counts and the latest scans: now, and every few seconds while another door may be scanning too
+  useEffect(() => {
+    reload();
+    const timer = setInterval(reload, 8000);
+    return () => clearInterval(timer);
+  }, [reload]);
+
+  function chooseDoor(id: string | null) {
+    setDoor(id);
+    setOutcome(null);
+    try {
+      if (id) localStorage.setItem(DOOR_KEY, id);
+      else localStorage.removeItem(DOOR_KEY);
+    } catch {
+      // private mode: the choice just isn't remembered
+    }
+  }
+
+  // The door chosen last time on this device, if it is still one of the events
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DOOR_KEY);
+      if (saved && saved !== initialEvent && events.some((e) => e.id === saved)) setTimeout(() => setDoor(saved), 0);
+    } catch {
+      // nothing remembered
+    }
+  }, [events, initialEvent]);
 
   function stopCamera() {
     stream.current?.getTracks().forEach((track) => track.stop());
@@ -68,6 +113,25 @@ export function TicketScanner() {
   // Off when leaving the page
   useEffect(() => () => stream.current?.getTracks().forEach((track) => track.stop()), []);
 
+  const check = useCallback(
+    (scanned: string) => {
+      if (busy.current) return;
+      busy.current = true;
+      navigator.vibrate?.(60);
+      startChecking(async () => {
+        try {
+          setOutcome({ scanned, ...(await scanTicket(scanned, door)) });
+        } catch {
+          setOutcome({ scanned, result: null, outcome: "not_found" });
+        } finally {
+          busy.current = false;
+          reload();
+        }
+      });
+    },
+    [door, reload],
+  );
+
   // While the camera is on and nothing is showing, read frames for a QR
   useEffect(() => {
     if (camera !== "on" || outcome) return;
@@ -94,30 +158,27 @@ export function TicketScanner() {
     };
     frame = requestAnimationFrame(read);
     return () => cancelAnimationFrame(frame);
-  }, [camera, outcome]);
-
-  function check(scanned: string) {
-    if (busy.current) return;
-    busy.current = true;
-    navigator.vibrate?.(60);
-    startChecking(async () => {
-      try {
-        setOutcome({ scanned, result: await scanTicket(scanned) });
-      } catch {
-        setOutcome({ scanned, result: null });
-      } finally {
-        busy.current = false;
-      }
-    });
-  }
+  }, [camera, outcome, check]);
 
   function admit() {
     if (!outcome?.result) return;
     const { scanned, result } = outcome;
-    startAdmitting(async () => {
-      const answer = await admitTicket(result.ticket.id, scanned);
-      setOutcome({ scanned, result: answer.result, admitted: answer.admitted });
-      navigator.vibrate?.(answer.admitted ? [40, 60, 40] : 200);
+    startWorking(async () => {
+      const answer = await admitTicket(result.ticket.id, scanned, door);
+      setOutcome({ scanned, ...answer });
+      navigator.vibrate?.(answer.outcome === "admitted" ? [40, 60, 40] : 200);
+      reload();
+    });
+  }
+
+  function undo() {
+    if (!outcome?.result) return;
+    const { scanned, result } = outcome;
+    startWorking(async () => {
+      const done = await undoAdmit(result.ticket.id);
+      const fresh = await scanTicket(scanned, door);
+      setOutcome({ scanned, ...fresh, undone: done });
+      reload();
     });
   }
 
@@ -125,110 +186,215 @@ export function TicketScanner() {
     setOutcome(null);
     setTyped("");
   };
+  const doorEvent = events.find((e) => e.id === door);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <section className={`${card} overflow-hidden`}>
-        <div className="relative aspect-square w-full bg-black sm:aspect-[4/3]">
-          <video ref={video} muted playsInline className={`size-full object-cover ${camera === "on" ? "" : "hidden"}`} />
-          <canvas ref={canvas} className="hidden" />
-          {camera === "on" ? (
-            // The square to hold the QR in
-            <span aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
-              <span className={`size-3/5 rounded-3xl border-4 transition-colors ${checking ? "border-amber-400" : "border-white/80"} shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]`} />
-            </span>
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white/80">
-              <Icon icon={QrCode01Icon} className="size-12" />
-              <p className="text-sm">เปิดกล้องแล้วส่อง QR บนบัตรของลูกค้า</p>
-              <button type="button" onClick={startCamera} disabled={camera === "starting"} className={`${pillPrimary} h-10 px-5`}>
-                <Icon icon={camera === "starting" ? Loading03Icon : Camera01Icon} className={`size-4 ${camera === "starting" ? "animate-spin" : ""}`} />
-                {camera === "starting" ? "กำลังเปิดกล้อง…" : "เปิดกล้องสแกน"}
-              </button>
-            </div>
-          )}
-          {checking && (
-            <span className="absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs text-white">
-              <Icon icon={Loading03Icon} className="size-3.5 animate-spin" />
-              กำลังตรวจบัตร…
-            </span>
-          )}
-        </div>
-
-        <div className="space-y-3 p-4 sm:p-5">
-          {cameraError && (
-            <p className="flex gap-1.5 text-xs text-red-600 dark:text-red-400">
-              <Icon icon={Alert02Icon} className="mt-px size-3.5 shrink-0" />
-              {cameraError}
-            </p>
-          )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (typed.trim()) check(typed.trim());
-            }}
-            className="flex gap-2"
+    <div className="space-y-4">
+      <section className={`${card} flex flex-wrap items-center gap-3 p-3 sm:p-4`}>
+        <label className="min-w-0 flex-1">
+          <span className="mb-1 block text-2xs text-muted-foreground">ประตูนี้สแกนบัตรของงาน</span>
+          <select
+            value={door ?? ""}
+            onChange={(e) => chooseDoor(e.target.value || null)}
+            className={`${input} cursor-pointer appearance-none pr-8`}
+            aria-label="เลือกอีเวนต์ของประตูนี้"
           >
-            <div className="relative min-w-0 flex-1">
-              <Icon icon={Search01Icon} className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={typed}
-                onChange={(e) => setTyped(e.target.value.toUpperCase())}
-                placeholder="หรือพิมพ์รหัสบัตร เช่น 7KQ3-M9XA"
-                aria-label="รหัสบัตร"
-                autoComplete="off"
-                spellCheck={false}
-                className={`${input} pl-9 font-mono tracking-wider`}
-              />
-            </div>
-            <button type="submit" disabled={!typed.trim() || checking} className={`${pill} h-10`}>
-              ตรวจบัตร
-            </button>
-          </form>
-          {camera === "on" && (
-            <button type="button" onClick={stopCamera} className="text-xs text-muted-foreground hover:text-foreground">
-              ปิดกล้อง
-            </button>
-          )}
-        </div>
-      </section>
-
-      <section aria-live="polite">
-        {outcome ? (
-          <Result outcome={outcome} admitting={admitting} onAdmit={admit} onNext={next} />
-        ) : (
-          <div className={`${card} flex h-full min-h-48 flex-col items-center justify-center gap-2 p-6 text-center`}>
-            <Icon icon={Ticket02Icon} className="size-8 text-muted-foreground" />
-            <p className="text-sm text-foreground">ผลการตรวจบัตรจะขึ้นที่นี่</p>
-            <p className="text-xs text-muted-foreground">ชื่อลูกค้า ประเภทบัตร จำนวนบัตร โทเคน และสถานะการเข้างาน</p>
+            <option value="">ทุกงาน (ไม่ตรวจว่าบัตรเป็นของงานไหน)</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.title} · {day.format(new Date(e.startsAt))}
+              </option>
+            ))}
+          </select>
+        </label>
+        {feed.stats && (
+          <div className="flex items-center gap-4">
+            <Counter label="บัตรเข้างานแล้ว" value={feed.stats.checkedIn} total={feed.stats.tickets} />
+            <Counter label="คนเข้างานแล้ว" value={feed.stats.peopleIn} total={feed.stats.people} />
           </div>
         )}
+        {door && (
+          <Link href={`/admin/events/${door}/checkins`} className={`${pill} h-9 text-xs`}>
+            รายชื่อเข้างาน
+            <Icon icon={ArrowRight01Icon} className="size-3.5" />
+          </Link>
+        )}
       </section>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <section className={`${card} overflow-hidden`}>
+            <div className="relative aspect-square w-full bg-black sm:aspect-[4/3]">
+              <video ref={video} muted playsInline className={`size-full object-cover ${camera === "on" ? "" : "hidden"}`} />
+              <canvas ref={canvas} className="hidden" />
+              {camera === "on" ? (
+                // The square to hold the QR in
+                <span aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
+                  <span
+                    className={`size-3/5 rounded-3xl border-4 transition-colors ${checking ? "border-amber-400" : "border-white/80"} shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]`}
+                  />
+                </span>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white/80">
+                  <Icon icon={QrCode01Icon} className="size-12" />
+                  <p className="text-sm">{doorEvent ? `สแกนบัตรงาน ${doorEvent.title}` : "เปิดกล้องแล้วส่อง QR บนบัตรของลูกค้า"}</p>
+                  <button type="button" onClick={startCamera} disabled={camera === "starting"} className={`${pillPrimary} h-10 px-5`}>
+                    <Icon icon={camera === "starting" ? Loading03Icon : Camera01Icon} className={`size-4 ${camera === "starting" ? "animate-spin" : ""}`} />
+                    {camera === "starting" ? "กำลังเปิดกล้อง…" : "เปิดกล้องสแกน"}
+                  </button>
+                </div>
+              )}
+              {checking && (
+                <span className="absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs text-white">
+                  <Icon icon={Loading03Icon} className="size-3.5 animate-spin" />
+                  กำลังตรวจบัตร…
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3 p-4 sm:p-5">
+              {cameraError && (
+                <p className="flex gap-1.5 text-xs text-red-600 dark:text-red-400">
+                  <Icon icon={Alert02Icon} className="mt-px size-3.5 shrink-0" />
+                  {cameraError}
+                </p>
+              )}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (typed.trim()) check(typed.trim());
+                }}
+                className="flex gap-2"
+              >
+                <div className="relative min-w-0 flex-1">
+                  <Icon icon={Search01Icon} className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value.toUpperCase())}
+                    placeholder="หรือพิมพ์รหัสบัตร เช่น 7KQ3-M9XA"
+                    aria-label="รหัสบัตร"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className={`${input} pl-9 font-mono tracking-wider`}
+                  />
+                </div>
+                <button type="submit" disabled={!typed.trim() || checking} className={`${pill} h-10`}>
+                  ตรวจบัตร
+                </button>
+              </form>
+              {camera === "on" && (
+                <button type="button" onClick={stopCamera} className="text-xs text-muted-foreground hover:text-foreground">
+                  ปิดกล้อง
+                </button>
+              )}
+            </div>
+          </section>
+
+          <RecentScans log={feed.log} door={door} />
+        </div>
+
+        <section aria-live="polite" className="min-w-0">
+          {outcome ? (
+            <Result outcome={outcome} working={working} onAdmit={admit} onUndo={undo} onNext={next} />
+          ) : (
+            <div className={`${card} flex h-full min-h-48 flex-col items-center justify-center gap-2 p-6 text-center`}>
+              <Icon icon={Ticket02Icon} className="size-8 text-muted-foreground" />
+              <p className="text-sm text-foreground">ผลการตรวจบัตรจะขึ้นที่นี่</p>
+              <p className="text-xs text-muted-foreground">ชื่อลูกค้า ประเภทบัตร จำนวนบัตร โทเคน และสถานะการเข้างาน</p>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-function Result({ outcome, admitting, onAdmit, onNext }: { outcome: Outcome; admitting: boolean; onAdmit: () => void; onNext: () => void }) {
-  const { result, admitted } = outcome;
-  const verdict: { tone: "good" | "warn" | "bad"; icon: IconSvgElement; title: string; detail: string } = !result
-    ? { tone: "bad", icon: CancelCircleIcon, title: "ไม่พบบัตรนี้", detail: "QR หรือรหัสไม่ใช่บัตรของ JoinTix อย่าให้เข้างาน" }
-    : result.ticket.status === "void"
-      ? { tone: "bad", icon: CancelCircleIcon, title: "บัตรถูกยกเลิก", detail: "บัตรใบนี้ใช้เข้างานไม่ได้" }
-      : result.ticket.status === "used"
-        ? admitted
-          ? { tone: "good", icon: CheckmarkCircle02Icon, title: "เข้างานเรียบร้อย", detail: `บันทึกเวลาเข้างาน ${when.format(new Date(result.ticket.checkedInAt!))}` }
-          : {
-              tone: "warn",
-              icon: Alert02Icon,
-              title: "บัตรนี้ใช้เข้างานไปแล้ว",
-              detail: `เข้างานเมื่อ ${result.ticket.checkedInAt ? when.format(new Date(result.ticket.checkedInAt)) : "-"}${result.ticket.checkedInBy ? ` โดย ${result.ticket.checkedInBy}` : ""}`,
-            }
-        : { tone: "good", icon: CheckmarkCircle02Icon, title: "บัตรถูกต้อง", detail: "ตรวจชื่อกับลูกค้า แล้วกดให้เข้างาน" };
+function Counter({ label, value, total }: { label: string; value: number; total: number }) {
+  return (
+    <div className="text-right">
+      <p className="text-2xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold text-foreground tabular-nums">
+        {num.format(value)}
+        <span className="text-sm font-normal text-muted-foreground"> / {num.format(total)}</span>
+      </p>
+    </div>
+  );
+}
+
+function RecentScans({ log, door }: { log: LogEntry[]; door: string | null }) {
+  return (
+    <section className={`${card} overflow-hidden`}>
+      <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
+        <h2 className="text-sm font-semibold text-foreground">สแกนล่าสุด</h2>
+        {door && (
+          <Link href={`/admin/events/${door}/checkins?tab=log`} className="text-2xs text-muted-foreground hover:text-foreground">
+            ดูประวัติทั้งหมด
+          </Link>
+        )}
+      </header>
+      {log.length === 0 ? (
+        <p className="px-4 py-6 text-center text-xs text-muted-foreground sm:px-5">ยังไม่มีการสแกน</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {log.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+              <span className="w-16 shrink-0 text-2xs text-muted-foreground tabular-nums">{clock.format(new Date(entry.at))}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-foreground">{entry.holder ?? <span className="font-mono text-muted-foreground">{entry.input}</span>}</p>
+                <p className="truncate text-2xs text-muted-foreground">
+                  {[entry.zone, entry.holder ? entry.input : null, entry.by ? `โดย ${entry.by}` : null].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <ScanBadge result={entry.result} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Result({
+  outcome,
+  working,
+  onAdmit,
+  onUndo,
+  onNext,
+}: {
+  outcome: Outcome;
+  working: boolean;
+  onAdmit: () => void;
+  onUndo: () => void;
+  onNext: () => void;
+}) {
+  const { result, undone } = outcome;
+  const checkedIn = result?.ticket.checkedInAt ? when.format(new Date(result.ticket.checkedInAt)) : "-";
+  const verdicts: Record<Outcome["outcome"], { tone: "good" | "warn" | "bad"; icon: IconSvgElement; title: string; detail: string }> = {
+    not_found: { tone: "bad", icon: CancelCircleIcon, title: "ไม่พบบัตรนี้", detail: "QR หรือรหัสไม่ใช่บัตรของ JoinTix อย่าให้เข้างาน" },
+    void: { tone: "bad", icon: CancelCircleIcon, title: "บัตรถูกยกเลิก", detail: "บัตรใบนี้ใช้เข้างานไม่ได้" },
+    wrong_event: { tone: "bad", icon: CancelCircleIcon, title: "บัตรของงานอื่น", detail: `บัตรนี้เป็นของ ${result?.event.title ?? "งานอื่น"} ไม่ใช่งานของประตูนี้` },
+    used: {
+      tone: "warn",
+      icon: Alert02Icon,
+      title: "บัตรนี้ใช้เข้างานไปแล้ว",
+      detail: `เข้างานเมื่อ ${checkedIn}${result?.ticket.checkedInBy ? ` โดย ${result.ticket.checkedInBy}` : ""}`,
+    },
+    admitted: { tone: "good", icon: CheckmarkCircle02Icon, title: "เข้างานเรียบร้อย", detail: `บันทึกเวลาเข้างาน ${checkedIn}` },
+    valid: {
+      tone: "good",
+      icon: CheckmarkCircle02Icon,
+      title: undone ? "ยกเลิกการเช็กอินแล้ว" : "บัตรถูกต้อง",
+      detail: undone ? "บัตรกลับเป็นยังไม่เข้างาน ใช้สแกนเข้าได้อีกครั้ง" : "ตรวจชื่อกับลูกค้า แล้วกดให้เข้างาน",
+    },
+    undone: { tone: "good", icon: Undo02Icon, title: "ยกเลิกการเช็กอินแล้ว", detail: "บัตรกลับเป็นยังไม่เข้างาน" },
+  };
+  const verdict = verdicts[outcome.outcome];
   const tones = {
     good: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     warn: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
     bad: "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400",
   };
+  const canUndo = result?.ticket.status === "used" && (outcome.outcome === "admitted" || outcome.outcome === "used");
 
   return (
     <div className={`${card} overflow-hidden`}>
@@ -285,16 +451,27 @@ function Result({ outcome, admitting, onAdmit, onNext }: { outcome: Outcome; adm
         </div>
       )}
 
-      <div className="flex gap-2 border-t border-border p-4 sm:p-5">
-        {result?.ticket.status === "valid" && (
-          <button type="button" onClick={onAdmit} disabled={admitting} className={`${pillPrimary} h-11 flex-1 justify-center text-base`}>
-            <Icon icon={admitting ? Loading03Icon : UserCheck01Icon} className={`size-5 ${admitting ? "animate-spin" : ""}`} />
+      <div className="flex flex-wrap gap-2 border-t border-border p-4 sm:p-5">
+        {outcome.outcome === "valid" && (
+          <button type="button" onClick={onAdmit} disabled={working} className={`${pillPrimary} h-11 flex-1 justify-center text-base`}>
+            <Icon icon={working ? Loading03Icon : UserCheck01Icon} className={`size-5 ${working ? "animate-spin" : ""}`} />
             ให้เข้างาน
           </button>
         )}
         <button type="button" onClick={onNext} className={`${pill} h-11 flex-1 justify-center`}>
           สแกนใบถัดไป
         </button>
+        {canUndo && (
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={working}
+            className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+          >
+            <Icon icon={Undo02Icon} className="size-4" />
+            ยกเลิกการเช็กอิน (กดให้เข้างานผิดใบ)
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckmarkCircle02Icon, LinkSquare02Icon, Money03Icon, Ticket02Icon } from "@hugeicons/core-free-icons";
+import { CheckmarkCircle02Icon, LinkSquare02Icon, Money03Icon, Ticket02Icon, UserCheck01Icon } from "@hugeicons/core-free-icons";
 import { DuplicateButton } from "@/components/admin/event-actions";
 import { DeleteEventPanel } from "@/components/admin/event-delete-panel";
 import { EventForm } from "@/components/admin/event-form";
@@ -29,6 +29,10 @@ export default async function EditEvent({ params, searchParams }: PageProps<"/ad
         <Badge tone={PUBLISH[event.status].tone}>{PUBLISH[event.status].label}</Badge>
         {event.status === "published" && <Badge tone={SALE[event.sale].tone}>{SALE[event.sale].label}</Badge>}
         <span className="flex-1 sm:hidden" />
+        <Link href={`/admin/events/${event.id}/checkins`} className={pill}>
+          <Icon icon={UserCheck01Icon} className="size-4" />
+          <span className="max-[379px]:sr-only">รายชื่อเข้างาน</span>
+        </Link>
         <DuplicateButton eventId={event.id} className={pill}>
           <span className="max-[379px]:sr-only">ทำสำเนา</span>
         </DuplicateButton>

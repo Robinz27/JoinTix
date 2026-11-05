@@ -43,6 +43,13 @@
       "when": 1793868433364,
       "tag": "0005_orders_tickets_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793877821717,
+      "tag": "0006_scan_logs",
+      "breakpoints": true
     }
   ]
 }

@@ -292,7 +292,7 @@ export async function tokenBalances(userId: string): Promise<{ total: number; ev
 export type ScanResult = {
   ticket: { id: string; code: string; seq: number; status: "valid" | "used" | "void"; checkedInAt: string | null; checkedInBy: string | null };
   order: { code: string; quantity: number; unitPrice: number; total: number; tokens: number; paidAt: string | null };
-  event: { title: string; startsAt: string; venue: string };
+  event: { id: string; title: string; startsAt: string; venue: string };
   zone: { name: string; note: string; price: number };
   holder: { name: string; email: string; phone: string; emailVerified: boolean };
   /** The holder's tokens for this event now, and every ticket they hold for it */
@@ -353,7 +353,7 @@ export async function lookupTicket(scanned: string): Promise<ScanResult | null> 
       tokens: row.order.tokens,
       paidAt: row.order.paidAt?.toISOString() ?? null,
     },
-    event: { title: row.event.title, startsAt: row.event.startsAt.toISOString(), venue: row.event.venue },
+    event: { id: row.event.id, title: row.event.title, startsAt: row.event.startsAt.toISOString(), venue: row.event.venue },
     zone: { name: row.zone.name, note: row.zone.note, price: row.zone.price },
     holder: { name: row.holder.name, email: row.holder.email, phone: row.holder.phone, emailVerified: row.holder.emailVerified },
     tokens: tokens.n,
