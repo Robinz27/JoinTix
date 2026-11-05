@@ -286,3 +286,31 @@ export const outbox = pgTable(
   },
   (table) => [index("outbox_pending_idx").on(table.createdAt).where(sql`${table.doneAt} is null`)],
 );
+
+/**
+ * Every look at a ticket at the door (หลังบ้าน /admin/scan), and every admission and undo: who, when,
+ * which ticket, what came of it. Kept so a QR shown twice, or a mistaken check-in, can be traced. Never
+ * the QR's secret: only the ticket's code, or the start of what was scanned when it matched nothing.
+ */
+export const scanLogs = pgTable(
+  "scan_logs",
+  {
+    id: uuid("id").primaryKey().default(sql`uuidv7()`),
+    ticketId: uuid("ticket_id").references(() => tickets.id, { onDelete: "set null" }),
+    /** The ticket's event */
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+    /** The event the door was scanning for, when one was chosen */
+    doorEventId: uuid("door_event_id").references(() => events.id, { onDelete: "set null" }),
+    scannedBy: text("scanned_by").references(() => user.id, { onDelete: "set null" }),
+    /** The ticket's code, or the first characters of an input that matched no ticket */
+    input: text("input").notNull(),
+    /** valid, used (scanned again), not_found, void, wrong_event, admitted, undone */
+    result: text("result").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("scan_logs_event_idx").on(table.eventId, table.createdAt),
+    index("scan_logs_door_event_idx").on(table.doorEventId, table.createdAt),
+    check("scan_logs_result_check", sql`${table.result} in ('valid', 'used', 'not_found', 'void', 'wrong_event', 'admitted', 'undone')`),
+  ],
+);

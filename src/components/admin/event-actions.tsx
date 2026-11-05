@@ -2,7 +2,7 @@
 
 import { useActionState, useId, useState, useTransition } from "react";
 import Link from "next/link";
-import { Copy01Icon, Delete02Icon, LinkSquare02Icon, Loading03Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
+import { Copy01Icon, Delete02Icon, LinkSquare02Icon, Loading03Icon, PencilEdit02Icon, UserCheck01Icon } from "@hugeicons/core-free-icons";
 import { deleteEvent, duplicateEvent } from "@/app/actions/admin-events";
 import type { AdminFormState } from "@/app/actions/admin";
 import { AdminDialog } from "@/components/admin/dialog";
@@ -89,6 +89,13 @@ export function EventActions({ event }: { event: EventRef }) {
           <Icon icon={PencilEdit02Icon} className="size-4" />
         </Link>
       </Hint>
+      <span className="max-sm:hidden">
+        <Hint label="รายชื่อเข้างาน">
+          <Link href={`/admin/events/${event.id}/checkins`} aria-label={`รายชื่อเข้างาน ${event.title}`} className={iconButton}>
+            <Icon icon={UserCheck01Icon} className="size-4" />
+          </Link>
+        </Hint>
+      </span>
       {event.status !== "draft" && (
         <span className="max-sm:hidden">
           <Hint label="ดูหน้าขาย">
