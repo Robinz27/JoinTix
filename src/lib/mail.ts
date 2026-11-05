@@ -1,18 +1,43 @@
-// Outgoing email through Resend's HTTP API (https://resend.com/docs/api-reference/emails/send-email).
-// Without RESEND_API_KEY nothing is sent: the message is printed in the server's terminal instead, so the
-// flows that send mail still work on a machine that has no key.
+import nodemailer from "nodemailer";
+
+// Outgoing email, by the first of these that is set up in .env.local:
+//   1. Gmail SMTP (GMAIL_USER + GMAIL_APP_PASSWORD): sends to anyone from that Gmail address, no domain of
+//      our own needed; Google allows a personal account roughly 500 messages a day
+//   2. Resend's HTTP API (RESEND_API_KEY): without a verified domain it only reaches the Resend account's
+//      own address (https://resend.com/docs/api-reference/emails/send-email)
+// With neither, nothing is sent: the message is printed in the server's terminal instead, so the flows
+// that send mail still work on a machine that has no keys.
 
 /** A file sent with the message; `contentId` shows it inside the HTML as <img src="cid:…"> */
 type Attachment = { filename: string; content: Buffer; contentId?: string };
 type Mail = { to: string; subject: string; html: string; text: string; attachments?: Attachment[] };
 
-/** Sender address. Resend's shared onboarding address works without a domain of our own. */
-const FROM = process.env.EMAIL_FROM || "JoinTix <onboarding@resend.dev>";
+const SENDER_NAME = "JoinTix";
+
+let gmail: nodemailer.Transporter | undefined;
 
 export async function sendMail(mail: Mail) {
+  const gmailUser = process.env.GMAIL_USER?.trim();
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
+  if (gmailUser && gmailPassword) {
+    // One connection set up for the whole server, not one per message
+    gmail ??= nodemailer.createTransport({ service: "gmail", auth: { user: gmailUser, pass: gmailPassword } });
+    await gmail.sendMail({
+      // Always the account that signs in: Gmail rewrites any other sender, and mail claiming to be someone
+      // it isn't is what lands in spam
+      from: { name: SENDER_NAME, address: gmailUser },
+      to: mail.to,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      attachments: mail.attachments?.map((a) => ({ filename: a.filename, content: a.content, cid: a.contentId })),
+    });
+    return;
+  }
+
   const key = process.env.RESEND_API_KEY;
   if (!key) {
-    console.info(`[mail] RESEND_API_KEY is not set, not sending. To: ${mail.to}\nSubject: ${mail.subject}\n${mail.text}`);
+    console.info(`[mail] no GMAIL_USER / GMAIL_APP_PASSWORD or RESEND_API_KEY, not sending. To: ${mail.to}\nSubject: ${mail.subject}\n${mail.text}`);
     return;
   }
 
@@ -20,7 +45,8 @@ export async function sendMail(mail: Mail) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: FROM,
+      // Resend's shared onboarding address works without a domain of our own
+      from: process.env.EMAIL_FROM || `${SENDER_NAME} <onboarding@resend.dev>`,
       to: [mail.to],
       subject: mail.subject,
       html: mail.html,

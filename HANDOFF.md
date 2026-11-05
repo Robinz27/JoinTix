@@ -126,7 +126,12 @@ npm ci
 DATABASE_URL='<connection string ของ Neon>'
 BETTER_AUTH_SECRET='<สุ่มยาว 32 ไบต์ เช่นจาก openssl rand -base64 32>'
 BETTER_AUTH_URL='http://localhost:3000'
-# ไม่บังคับ: ส่งอีเมลลืมรหัสผ่านจริง (ไม่ใส่ = แสดงลิงก์ใน terminal แทน)
+# ไม่บังคับ: ส่งอีเมลจริง (ไม่ใส่ = แสดงอีเมลใน terminal แทน) ใช้ตัวแรกที่ตั้งไว้
+# 1) Gmail SMTP ส่งถึงทุกคนได้ ไม่ต้องมีโดเมน (~500 ฉบับ/วัน) ต้องเปิด 2-Step Verification
+#    แล้วสร้าง App Password ที่ myaccount.google.com/apppasswords
+GMAIL_USER='jointix.tickets@gmail.com'
+GMAIL_APP_PASSWORD='xxxx xxxx xxxx xxxx'
+# 2) Resend: ถ้ายังไม่ยืนยันโดเมน ส่งได้แค่อีเมลเจ้าของบัญชี Resend (100 ฉบับ/วัน)
 RESEND_API_KEY='re_...'
 EMAIL_FROM='JoinTix <onboarding@resend.dev>'
 ```
@@ -215,7 +220,7 @@ src/
     auth.ts               ← ตั้งค่า Better Auth (ฝั่ง server)
     auth-client.ts        ← Better Auth ฝั่งเบราว์เซอร์ (navbar ใช้อ่าน session)
     session.ts            ← getSession() สำหรับ Server Component / safeNext() กัน ?next= พาออกนอกเว็บ
-    mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมล (รีเซ็ตรหัสผ่าน, ลิงก์/รหัสยืนยันอีเมล)
+    mail.ts               ← ส่งอีเมลผ่าน Gmail SMTP (nodemailer) หรือ Resend + แม่แบบอีเมล (รีเซ็ตรหัสผ่าน, ลิงก์/รหัสยืนยันอีเมล)
     orders.ts             ← ซื้อบัตร: ล็อก / จ่าย / ยกเลิก / หมดเวลา, บัตรของฉัน, โทเคน, ตรวจและเช็กอินบัตร
     outbox.ts             ← งานหลังจ่ายเงิน (อีเมลบัตร + QR) ทำนอก request และลองใหม่ได้
   app/
