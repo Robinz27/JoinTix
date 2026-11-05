@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, like, notInArray, sum } from "drizzle-orm";
+import { and, eq, like, notInArray, or, sql, sum } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,6 +8,7 @@ import { getDb } from "@/db";
 import { events, ticketZones } from "@/db/schema";
 import type { AdminFormState } from "@/app/actions/admin";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
+import { MAX_GALLERY } from "@/lib/event-fields";
 import { isPosterSrc } from "@/lib/poster";
 import { requireSuperAdmin } from "@/lib/session";
 import { deleteUploadedImage, isUploadPath, saveUploadedImage } from "@/lib/uploads";
@@ -62,7 +63,37 @@ export type SaveEventState = AdminFormState & {
   zoneIds?: string[];
   /** The poster as saved, an uploaded picture's new path included, so the form stops sending the file */
   poster?: string;
+  /** The same for the gallery: every picture's path, in order */
+  gallery?: string[];
 };
+
+/**
+ * The gallery from the form (components/admin/gallery-field.tsx): in order, each one a path already
+ * saved, or `{ file: n }` for the n-th "galleryFile" sent with it
+ */
+function parseGallery(form: FormData): { entries: (string | File)[] } | { error: string } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(form.get("gallery") ?? "[]"));
+  } catch {
+    return { error: "ข้อมูลรูปเพิ่มเติมไม่ถูกต้อง" };
+  }
+  if (!Array.isArray(raw)) return { error: "ข้อมูลรูปเพิ่มเติมไม่ถูกต้อง" };
+  if (raw.length > MAX_GALLERY) return { error: `รูปเพิ่มเติมได้ไม่เกิน ${MAX_GALLERY} รูป` };
+  const files = form.getAll("galleryFile").filter((f): f is File => f instanceof File && f.size > 0);
+  const entries: (string | File)[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      if (!isPosterSrc(item)) return { error: "มีรูปเพิ่มเติมที่ที่อยู่ไม่ถูกต้อง" };
+      entries.push(item);
+    } else {
+      const file = files[Number((item as { file?: unknown })?.file)];
+      if (!file) return { error: "ส่งรูปเพิ่มเติมไม่ครบ ลองเลือกรูปใหม่อีกครั้ง" };
+      entries.push(file);
+    }
+  }
+  return { entries };
+}
 
 /** สร้าง / แก้ไขอีเวนต์: every field of the event and its whole list of zones, written together */
 export async function saveEvent(_: SaveEventState, form: FormData): Promise<SaveEventState> {
@@ -101,17 +132,19 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   if (!Number.isInteger(maxPerOrder) || maxPerOrder < 1 || maxPerOrder > 20) return { error: "จำกัดต่อบัญชีต้องเป็น 1–20 ใบ" };
   const zones = parseZones(String(form.get("zones") ?? ""));
   if (typeof zones === "string") return { error: zones };
+  const galleryInput = parseGallery(form);
+  if ("error" in galleryInput) return galleryInput;
 
   const db = getDb();
   const [taken] = await db.select({ id: events.id }).from(events).where(eq(events.slug, slug)).limit(1);
   if (taken && taken.id !== id) return { error: "ลิงก์ (slug) นี้มีอีเวนต์อื่นใช้แล้ว" };
 
-  let oldPoster: string | null = null;
+  let oldPictures: string[] = [];
   let savedZones: (typeof ticketZones.$inferSelect)[] = [];
   if (id) {
-    const [existing] = await db.select({ poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
+    const [existing] = await db.select({ poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
     if (!existing) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
-    oldPoster = existing.poster;
+    oldPictures = [existing.poster, ...existing.gallery];
     // A zone people have bought into can't go away, or shrink below what's sold
     savedZones = await db.select().from(ticketZones).where(eq(ticketZones.eventId, id));
   }
@@ -124,14 +157,32 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     if (saved && zone.capacity < saved.sold) return { error: `โซน "${zone.name}" ขายไปแล้ว ${saved.sold} ใบ ตั้งจำนวนบัตรต่ำกว่านั้นไม่ได้` };
   }
 
-  // The picture is stored last, once nothing else can turn the save down
+  // The pictures are stored last, once nothing else can turn the save down. Any stored for a save that
+  // then fails go again
+  const stored: string[] = [];
+  const discard = async (error: string): Promise<SaveEventState> => {
+    await Promise.all(stored.map(deleteUploadedImage));
+    return { error };
+  };
   if (upload) {
-    const stored = await saveUploadedImage(upload, "posters");
-    if (!stored.ok) return { error: stored.error };
-    poster = stored.path;
+    const saved = await saveUploadedImage(upload, "posters");
+    if (!saved.ok) return discard(saved.error);
+    poster = saved.path;
+    stored.push(poster);
+  }
+  const gallery: string[] = [];
+  for (const entry of galleryInput.entries) {
+    if (typeof entry === "string") {
+      gallery.push(entry);
+      continue;
+    }
+    const saved = await saveUploadedImage(entry, "gallery");
+    if (!saved.ok) return discard(`รูปเพิ่มเติม: ${saved.error}`);
+    gallery.push(saved.path);
+    stored.push(saved.path);
   }
 
-  const values = { title, slug, organizer, venue, description, poster, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
+  const values = { title, slug, organizer, venue, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
   const queries: BatchItem<"pg">[] = [];
   let eventId = id;
 
@@ -166,22 +217,27 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
   } catch (e) {
     console.error("[saveEvent]", e);
-    if (upload) await deleteUploadedImage(poster);
-    return { error: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง" };
+    return discard("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
   }
   updateTag(EVENTS_TAG);
-  if (oldPoster && oldPoster !== poster) await dropIfUnused(oldPoster);
+  const now = new Set([poster, ...gallery]);
+  await dropIfUnused(oldPictures.filter((picture) => !now.has(picture)));
 
   if (!id) redirect(`/admin/events/${eventId}?created=1`);
   refresh();
-  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster };
+  return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster, gallery };
 }
 
-/** An uploaded poster no event shows any more is deleted (ทำสำเนา shares one picture between events) */
-async function dropIfUnused(poster: string) {
-  if (!isUploadPath(poster)) return;
-  const [used] = await getDb().select({ id: events.id }).from(events).where(eq(events.poster, poster)).limit(1);
-  if (!used) await deleteUploadedImage(poster);
+/** Uploaded pictures no event shows any more are deleted (ทำสำเนา shares pictures between events) */
+async function dropIfUnused(pictures: string[]) {
+  for (const picture of pictures.filter(isUploadPath)) {
+    const [used] = await getDb()
+      .select({ id: events.id })
+      .from(events)
+      .where(or(eq(events.poster, picture), sql`${picture} = any(${events.gallery})`))
+      .limit(1);
+    if (!used) await deleteUploadedImage(picture);
+  }
 }
 
 /** ทำสำเนา: a draft copy with the same details and zones, nothing sold, then straight to editing it */
@@ -204,6 +260,7 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
     venue: source.venue,
     description: source.description,
     poster: source.poster,
+    gallery: source.gallery,
     startsAt: source.startsAt,
     doorsAt: source.doorsAt,
     salesStartAt: source.salesStartAt,
@@ -227,14 +284,14 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   await requireSuperAdmin("/admin/events");
   const id = text(form, "eventId");
   const db = getDb();
-  const [target] = await db.select({ slug: events.slug, poster: events.poster }).from(events).where(eq(events.id, id)).limit(1);
+  const [target] = await db.select({ slug: events.slug, poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
   if (!target) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
   if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
   if (sold > 0) return { error: `ขายบัตรไปแล้ว ${sold} ใบ ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน` };
 
   await db.delete(events).where(eq(events.id, id));
-  await dropIfUnused(target.poster);
+  await dropIfUnused([target.poster, ...target.gallery]);
   updateTag(EVENTS_TAG);
   if (form.get("from") === "edit") redirect("/admin/events");
   refresh();

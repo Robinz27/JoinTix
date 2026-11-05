@@ -96,6 +96,7 @@ export default async function EditEvent({ params, searchParams }: PageProps<"/ad
           venue: event.venue,
           description: event.description,
           poster: event.poster,
+          gallery: event.gallery,
           startsAt: event.startsAt,
           doorsAt: event.doorsAt,
           salesStartAt: event.salesStartAt,

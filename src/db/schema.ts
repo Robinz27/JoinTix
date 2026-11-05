@@ -101,6 +101,8 @@ export const events = pgTable(
     description: text("description").default("").notNull(),
     /** 4:5 poster, a path under public/ (/posters/x.svg) or an https URL */
     poster: text("poster").notNull(),
+    /** More pictures shown after the poster on the event page, in order (same kinds of path as `poster`) */
+    gallery: text("gallery").array().default(sql`'{}'::text[]`).notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     doorsAt: timestamp("doors_at", { withTimezone: true }).notNull(),
     salesStartAt: timestamp("sales_start_at", { withTimezone: true }).notNull(),

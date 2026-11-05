@@ -28,6 +28,7 @@ export function TicketPanel({
   zones,
   maxPerOrder,
   salesStart,
+  children,
 }: {
   /** For coming back here after signing in */
   slug: string;
@@ -35,6 +36,8 @@ export function TicketPanel({
   zones: TicketZone[];
   maxPerOrder: number;
   salesStart: string;
+  /** Under everything else in the card (the share row) */
+  children?: React.ReactNode;
 }) {
   const onSale = isBuyable(status);
   const [zoneId, setZoneId] = useState(() => (onSale ? zones.find((zone) => zone.remaining > 0)?.id : undefined));
@@ -193,6 +196,7 @@ export function TicketPanel({
           ? "ระบบจองและชำระเงินยังอยู่ระหว่างพัฒนา เร็วๆ นี้จะกดต่อไปหน้าชำระเงินได้"
           : "กดซื้อแล้วระบบจะล็อกบัตรไว้ให้ 10 นาที ระหว่างชำระเงิน"}
       </p>
+      {children}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
 import { saveEvent } from "@/app/actions/admin-events";
 import { PUBLISH } from "@/components/admin/event-status";
 import { DateTimeField } from "@/components/admin/date-time-field";
+import { GalleryField, savedItem, type GalleryItem } from "@/components/admin/gallery-field";
 import { PosterField, type PickedPoster } from "@/components/admin/poster-field";
 import { Choices, Notice, hint, label } from "@/components/admin/form";
 import { card, iconButton, input, pill, pillPrimary, tile } from "@/components/admin/ui";
@@ -37,6 +38,7 @@ export type EventFormValues = {
   venue: string;
   description: string;
   poster: string;
+  gallery: string[];
   startsAt: string;
   doorsAt: string;
   salesStartAt: string;
@@ -107,6 +109,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   const [slugTouched, setSlugTouched] = useState(Boolean(event));
   const [poster, setPoster] = useState(event?.poster ?? "");
   const [picked, setPicked] = useState<PickedPoster | null>(null);
+  const [gallery, setGallery] = useState<GalleryItem[]>(() => (event?.gallery ?? []).map(savedItem));
   // A new file replaces the one before it; its preview URL goes with it
   const pick = (file: File | null) =>
     setPicked((before) => {
@@ -129,6 +132,14 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
       setPoster(state.poster);
       pick(null);
     }
+    // …and the gallery's new files are saved pictures now
+    const paths = state.gallery;
+    if (paths) {
+      setGallery((items) => {
+        for (const item of items) if (item.file) URL.revokeObjectURL(item.url);
+        return paths.map(savedItem);
+      });
+    }
   }
 
   const capacity = zones.reduce((n, zone) => n + (zone.capacity || 0), 0);
@@ -148,6 +159,11 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
     const form = new FormData(e.currentTarget);
     form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity }) => ({ id, name, note, price, capacity }))));
     if (picked) form.set("posterFile", picked.file);
+    // Saved pictures go by path; new ones as files, each pointed at by its place among them
+    let n = 0;
+    const order = gallery.map((item) => (item.file ? { file: n++ } : item.path));
+    form.set("gallery", JSON.stringify(order));
+    for (const item of gallery) if (item.file) form.append("galleryFile", item.file);
     startTransition(() => action(form));
   }
 
@@ -371,6 +387,10 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
           <Section icon={Image01Icon} title="โปสเตอร์" subtitle="แนวตั้ง 4:5 เช่น 800×1000">
             <input type="hidden" name="poster" value={poster} />
             <PosterField id={`${ids}-poster`} poster={poster} onPoster={setPoster} picked={picked} onPick={pick} posters={posters} />
+          </Section>
+
+          <Section icon={Image01Icon} title="รูปเพิ่มเติม" subtitle="ผังที่นั่ง เวที สถานที่ ฯลฯ (ไม่บังคับ)">
+            <GalleryField items={gallery} onChange={setGallery} />
           </Section>
         </div>
       </div>

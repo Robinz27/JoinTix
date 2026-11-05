@@ -47,7 +47,7 @@
 | ติดตั้ง Next.js + Drizzle + Neon | ✅ เสร็จ |
 | เชื่อมต่อฐานข้อมูล (`/api/health`) | ✅ ทดสอบผ่าน |
 | ตารางระบบสมาชิก (`user`, `session`, `account`, `verification`) | ✅ สร้างใน Neon แล้ว (migration `drizzle/0000_auth.sql`) |
-| ตาราง `events` + `ticket_zones` | ✅ **ออกแบบเสร็จและสร้างใน Neon แล้ว** (migration `drizzle/0002_events.sql` มีอีเวนต์ตัวอย่าง 4 งานติดมาด้วย) PK เป็น UUIDv7 (`uuidv7()` ของ Postgres 18), `events.status` = `draft` / `published` / `closed`, สถานะขายที่หน้าเว็บ (เปิดขาย / ใกล้หมด / รอเปิดขาย / หมด / ปิดการขาย) **ไม่ได้เก็บ** คำนวณใน `saleStatus()` ของ `src/lib/events.ts` จากวันที่ + จำนวนที่เหลือ, `ticket_zones.sold` ให้ API จองเป็นคนอัปเดต (มี CHECK `sold` ≤ `capacity`) |
+| ตาราง `events` + `ticket_zones` | ✅ **ออกแบบเสร็จและสร้างใน Neon แล้ว** (migration `drizzle/0002_events.sql` มีอีเวนต์ตัวอย่าง 4 งานติดมาด้วย, `0003_event_gallery.sql` เพิ่ม `events.gallery` (text[] รูปเพิ่มเติมนอกจากโปสเตอร์ สูงสุด 10 รูป)) PK เป็น UUIDv7 (`uuidv7()` ของ Postgres 18), `events.status` = `draft` / `published` / `closed`, สถานะขายที่หน้าเว็บ (เปิดขาย / ใกล้หมด / รอเปิดขาย / หมด / ปิดการขาย) **ไม่ได้เก็บ** คำนวณใน `saleStatus()` ของ `src/lib/events.ts` จากวันที่ + จำนวนที่เหลือ, `ticket_zones.sold` ให้ API จองเป็นคนอัปเดต (มี CHECK `sold` ≤ `capacity`) |
 | ออกแบบ DB schema ส่วนที่นั่ง / ตั๋ว / order / payment | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ให้อ้าง `user.id` ที่เป็น text และ `events.id` / `ticket_zones.id` ที่เป็น uuid) |
 | ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: หน้า `/tickets` |
 | ยืนยันอีเมล | ✅ เสร็จ 2 ทาง (ไม่บังคับตอนสมัคร/ล็อกอิน แต่ต้องยืนยันก่อนซื้อบัตร): (1) หน้า `/profile` กดส่งลิงก์ทางอีเมล เปิดลิงก์แล้วยืนยันให้เอง (ใช้ได้ 1 ชม.) (2) ในหน้าซื้อบัตร ถ้ายังไม่ยืนยันจะส่งรหัส 6 หลัก (Better Auth plugin `emailOTP`, 10 นาที กรอกผิดได้ 5 ครั้ง) ไม่มี `RESEND_API_KEY` ลิงก์/รหัสจะโผล่ใน terminal ของ server ลิงก์ในอีเมลใช้ `BETTER_AUTH_URL` เป็นโดเมน |
@@ -63,7 +63,7 @@
 | หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ ดึงจากตาราง `events` (ติ๊ก "อีเวนต์แนะนำ" ในหลังบ้าน) ผ่าน `getFeaturedEvents()` ที่ cache ไว้ 1 นาที รูปใน `public/posters/` |
 | Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix แบบ Aceternity Text Hover Effect: เส้นขอบวาดเองตอนเลื่อนถึง + สีรุ้งตามเมาส์) | ✅ เสร็จ ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
 | Animation + skeleton loading | ✅ หน้าแรก / login / register / ลืมรหัสผ่าน มี `loading.tsx` เป็น skeleton, รูปค่อยๆ เฟดขึ้นบน skeleton, การ์ดและ footer ลอยขึ้นตอนเลื่อน (`.reveal`) หน้าใหม่ให้เพิ่ม `loading.tsx` ด้วย (ดูหัว `src/components/ui/skeleton.tsx`) |
-| หน้าอีเวนต์ / เลือกซื้อบัตร `/events/[id]` (โปสเตอร์ + รายละเอียด, เลือกโซน + จำนวน จำกัดใบต่อบัญชี, สรุปราคา, ยังไม่ล็อกอินให้ไป `/login?next=`, ปุ่มเปลี่ยนตามสถานะขาย) | ✅ UI เสร็จ ดึงจาก DB ด้วย `getEvent(slug)` (`[id]` ในพาธคือ `events.slug`, ฉบับร่างเปิดไม่เจอ) ต้องล็อกอินและยืนยันอีเมลก่อน ปุ่มซื้อยังแค่บอกว่าระบบจองกำลังพัฒนา รอ API กดบัตร (API ต้องเช็ก `emailVerified` ฝั่ง server ด้วย) |
+| หน้าอีเวนต์ / เลือกซื้อบัตร `/events/[id]` (โปสเตอร์ + รายละเอียด, เลือกโซน + จำนวน จำกัดใบต่อบัญชี, สรุปราคา, ยังไม่ล็อกอินให้ไป `/login?next=`, ปุ่มเปลี่ยนตามสถานะขาย) | ✅ UI เสร็จ: รูปแบบ 4TUNEZ (โปสเตอร์ใหญ่ในกรอบ + รูปย่อด้านล่างเมื่อมีหลายรูป กดดูเต็มจอ ซูม/ปัด/ลูกศรได้ `components/event-gallery.tsx`), กรอบ "ข้อมูลอีเวนต์" (ป้ายสถานะ `.status-badge`, วัน เวลา ประตูเปิด สถานที่ ผู้จัด ราคา คงเหลือ จำกัดใบ), ปุ่มแชร์ LINE / Facebook / Messenger / Discord / X / Telegram / WhatsApp / คัดลอกลิงก์ / แชร์ของมือถือ ใต้กล่องเลือกบัตร (`components/share-row.tsx`, สีแบรนด์ `--share-*` ใน globals.css) และ Open Graph ให้ลิงก์ที่แชร์ขึ้นการ์ด ดึงจาก DB ด้วย `getEvent(slug)` (`[id]` ในพาธคือ `events.slug`, ฉบับร่างเปิดไม่เจอ) ต้องล็อกอินและยืนยันอีเมลก่อน ปุ่มซื้อยังแค่บอกว่าระบบจองกำลังพัฒนา รอ API กดบัตร (API ต้องเช็ก `emailVerified` ฝั่ง server ด้วย) |
 | หน้า `/events` (รายการทั้งหมด), `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
@@ -181,6 +181,8 @@ src/
     ticket-panel.tsx      ← กล่องเลือกโซน/จำนวนบัตรในหน้าอีเวนต์ (client)
     verify-email-code.tsx ← ยืนยันอีเมลด้วยรหัส 6 หลักในหน้าซื้อบัตร
     verify-email-link.tsx ← กล่องสถานะ + ส่งลิงก์ยืนยันอีเมลในหน้าโปรไฟล์
+    event-gallery.tsx     ← รูปอีเวนต์ + รูปย่อ + ดูเต็มจอ (ยกจาก product-gallery ของ next.js-shop)
+    share-row.tsx         ← ปุ่มแชร์ไปแอปต่างๆ
     event-card.tsx        ← การ์ดอีเวนต์ (ใช้ class .event-card / .btn-buy ใน globals.css)    site-footer.tsx       ← footer ทุกหน้า (ลิงก์อยู่ในตัวแปร GROUPS)
     text-hover-effect.tsx ← ชื่อเว็บตัวใหญ่ท้าย footer (แบบ Aceternity ทำเองด้วย SVG ไม่ใช้ library)
     skeletons.tsx         ← skeleton ของแต่ละหน้า/ส่วน (Hero, Banner, Events, AuthCard)
@@ -192,7 +194,8 @@ src/
                             event-form.tsx ฟอร์มสร้าง/แก้อีเวนต์ + โซนบัตร, event-actions.tsx ปุ่มต่อแถว + dialog ลบ,
                             event-delete-panel.tsx, event-status.ts ป้ายสถานะ,
                             date-time-field.tsx ช่องเลือกวัน+เวลาแบบปฏิทินของ 4TUNEZ (ใช้แทน input datetime-local),
-                            poster-field.tsx ช่องอัปโหลดโปสเตอร์ (ลากวาง + ตัวอย่าง + เลือกจากรูปที่มี)
+                            poster-field.tsx ช่องอัปโหลดโปสเตอร์ (ลากวาง + ตัวอย่าง + เลือกจากรูปที่มี),
+                            gallery-field.tsx รูปเพิ่มเติมหลายรูป (เพิ่มทีละหลายไฟล์ / เรียงลำดับ / ลบ)
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
     banners.ts            ← รายการแบนเนอร์ (ตัวอย่าง รอดึงจาก DB) — รูปขนาด 5:2 เช่น 1500×600

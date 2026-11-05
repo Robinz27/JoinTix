@@ -530,3 +530,62 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Share buttons on the event page (components/share-row.tsx): each app's own brand colour */
+:root {
+  --share-line: #06c755;
+  --share-facebook: #1877f2;
+  --share-messenger: #0084ff;
+  --share-discord: #5865f2;
+  --share-x: #000000;
+  --share-telegram: #229ed9;
+  --share-whatsapp: #25d366;
+}
+
+/* The sale status in the event's info card (app/(site)/events/[id]), next.js-shop's stock badge */
+.status-badge {
+  --tone: var(--color-emerald-500, oklch(69.6% 0.17 162.48));
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tone) 25%, transparent);
+  background: color-mix(in srgb, var(--tone) 20%, transparent);
+  color: var(--tone);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.status-badge[data-tone="warn"] { --tone: var(--color-amber-500, oklch(76.9% 0.188 70.08)); }
+.status-badge[data-tone="off"] { --tone: var(--color-red-500, oklch(63.7% 0.237 25.331)); }
+.status-badge[data-tone="wait"] { --tone: var(--color-sky-500, oklch(68.5% 0.169 237.323)); }
+:root:not(.dark) .status-badge {
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: color-mix(in srgb, var(--tone) 85%, #000);
+}
+.status-badge-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+/* A soft ring pulses out of the dot while tickets are on sale */
+.status-badge[data-tone="on"] .status-badge-dot::after,
+.status-badge[data-tone="warn"] .status-badge-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: status-pulse 2s ease-out infinite;
+}
+@keyframes status-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-badge-dot::after { animation: none !important; }
+}

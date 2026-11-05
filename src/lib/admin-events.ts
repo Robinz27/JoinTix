@@ -28,6 +28,8 @@ export type AdminEvent = {
   maxPerOrder: number;
   createdAt: string;
   updatedAt: string;
+  /** More pictures after the poster, in order */
+  gallery: string[];
   zones: AdminZone[];
   /** What the site shows now; drafts get what it would show once published */
   sale: EventStatus;

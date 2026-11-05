@@ -45,6 +45,8 @@ export type EventDetail = EventSummary & {
   /** ISO date-time sales start, shown while the event is coming soon */
   salesStartAt: string;
   description: string[];
+  /** Every picture of the event, the poster first */
+  images: string[];
   /** Most tickets one account may take per order (anti-scalper) */
   maxPerOrder: number;
   zones: TicketZone[];
@@ -144,6 +146,7 @@ export async function getEvent(slug: string): Promise<EventDetail | undefined> {
       .split(/\n\s*\n/)
       .map((paragraph) => paragraph.trim())
       .filter(Boolean),
+    images: [event.poster, ...event.gallery],
     maxPerOrder: event.maxPerOrder,
     zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold })),
   };
