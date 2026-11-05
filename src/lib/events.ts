@@ -36,6 +36,8 @@ export type TicketZone = {
   note: string;
   /** Tickets left; 0 is sold out */
   remaining: number;
+  /** Tokens each ticket comes with, to spend at the event */
+  tokens: number;
 };
 
 export type EventDetail = EventSummary & {
@@ -154,6 +156,6 @@ export async function getEvent(slug: string): Promise<EventDetail | undefined> {
     pin: event.latitude != null && event.longitude != null ? { lat: event.latitude, lng: event.longitude } : null,
     images: [event.poster, ...event.gallery],
     maxPerOrder: event.maxPerOrder,
-    zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold })),
+    zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold, tokens: zone.tokens })),
   };
 }

@@ -30,7 +30,7 @@ import { PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/event-fie
 // zones in one form, saved together by saveEvent. The form is submitted by hand (onSubmit) rather than
 // through `action`, so a failed save keeps what was typed instead of React resetting the fields.
 
-export type EventFormZone = { id?: string; name: string; note: string; price: number; capacity: number; sold: number };
+export type EventFormZone = { id?: string; name: string; note: string; price: number; capacity: number; sold: number; tokens: number };
 
 export type EventFormValues = {
   id?: string;
@@ -123,7 +123,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
       return file ? { file, url: URL.createObjectURL(file) } : null;
     });
   const [zones, setZones] = useState<ZoneRow[]>(() =>
-    (event?.zones.length ? event.zones : [{ name: "บัตรทั่วไป", note: "", price: 0, capacity: 100, sold: 0 }]).map(withKey),
+    (event?.zones.length ? event.zones : [{ name: "บัตรทั่วไป", note: "", price: 0, capacity: 100, sold: 0, tokens: 0 }]).map(withKey),
   );
 
   // Zones added by the last save now exist; take their ids (once per answer) so the next save edits rather
@@ -163,7 +163,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity }) => ({ id, name, note, price, capacity }))));
+    form.set("zones", JSON.stringify(zones.map(({ id, name, note, price, capacity, tokens }) => ({ id, name, note, price, capacity, tokens }))));
     if (picked) form.set("posterFile", picked.file);
     // Saved pictures go by path; new ones as files, each pointed at by its place among them
     let n = 0;
@@ -343,6 +343,24 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                         className={`${input} tabular-nums`}
                       />
                     </Field>
+                    <Field
+                      id={`${ids}-zone-${zone.key}-tokens`}
+                      title="โทเคนต่อใบ (แลกสินค้าในงาน)"
+                      note={zone.tokens > 0 && zone.price > 0 ? `≈ 1 โทเคนต่อ ฿${baht.format(Math.round((zone.price / zone.tokens) * 100) / 100)}` : "0 = ไม่แถมโทเคน"}
+                    >
+                      <input
+                        id={`${ids}-zone-${zone.key}-tokens`}
+                        type="number"
+                        inputMode="numeric"
+                        required
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        value={Number.isNaN(zone.tokens) ? "" : zone.tokens}
+                        onChange={(e) => update(zone.key, { tokens: e.target.valueAsNumber })}
+                        className={`${input} tabular-nums`}
+                      />
+                    </Field>
                   </div>
                   {zone.sold > 0 && zone.capacity > 0 && (
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
@@ -355,7 +373,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             <button
               type="button"
               disabled={zones.length >= 20}
-              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, key: `added-${addedKey++}` }])}
+              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, tokens: 0, key: `added-${addedKey++}` }])}
               className={`${pill} w-full justify-center border-dashed`}
             >
               <Icon icon={PlusSignIcon} className="size-4" />

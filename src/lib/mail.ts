@@ -2,7 +2,9 @@
 // Without RESEND_API_KEY nothing is sent: the message is printed in the server's terminal instead, so the
 // flows that send mail still work on a machine that has no key.
 
-type Mail = { to: string; subject: string; html: string; text: string };
+/** A file sent with the message; `contentId` shows it inside the HTML as <img src="cid:…"> */
+type Attachment = { filename: string; content: Buffer; contentId?: string };
+type Mail = { to: string; subject: string; html: string; text: string; attachments?: Attachment[] };
 
 /** Sender address. Resend's shared onboarding address works without a domain of our own. */
 const FROM = process.env.EMAIL_FROM || "JoinTix <onboarding@resend.dev>";
@@ -17,15 +19,22 @@ export async function sendMail(mail: Mail) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [mail.to], subject: mail.subject, html: mail.html, text: mail.text }),
+    body: JSON.stringify({
+      from: FROM,
+      to: [mail.to],
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      attachments: mail.attachments?.map((a) => ({ filename: a.filename, content: a.content.toString("base64"), content_id: a.contentId })),
+    }),
   });
   if (!res.ok) throw new Error(`Resend answered ${res.status}: ${await res.text()}`);
 }
 
-const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Every email's frame: a white card on grey with the site name; `body` is already-escaped HTML */
-function layout(body: string) {
+export function layout(body: string) {
   return `<!doctype html>
 <html lang="th">
   <body style="margin:0;background:#f5f5f5;font-family:'Segoe UI',Tahoma,sans-serif;color:#0a0a0a">
@@ -37,7 +46,7 @@ function layout(body: string) {
 </html>`;
 }
 
-const button = (url: string, label: string) =>
+export const button = (url: string, label: string) =>
   `<a href="${escape(url)}" style="display:inline-block;background:#171717;color:#fafafa;text-decoration:none;font-size:14px;font-weight:600;padding:12px 24px;border-radius:12px">${label}</a>`;
 
 /** The password reset email: a button to the link Better Auth made, which works once, for an hour */

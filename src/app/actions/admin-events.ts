@@ -5,7 +5,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { events, ticketZones } from "@/db/schema";
+import { events, orders, ticketZones } from "@/db/schema";
 import type { AdminFormState } from "@/app/actions/admin";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
 import { MAX_GALLERY } from "@/lib/event-fields";
@@ -31,7 +31,7 @@ function thaiTime(value: string): Date | undefined {
 }
 
 /** One zone row from the form; `id` is set for a zone that's already saved */
-type ZoneInput = { id?: string; name: string; note: string; price: number; capacity: number };
+type ZoneInput = { id?: string; name: string; note: string; price: number; capacity: number; tokens: number };
 
 function parseZones(raw: string): ZoneInput[] | string {
   let rows: unknown;
@@ -49,12 +49,14 @@ function parseZones(raw: string): ZoneInput[] | string {
     const note = String(zone.note ?? "").trim();
     const price = Number(zone.price);
     const capacity = Number(zone.capacity);
+    const tokens = Number(zone.tokens ?? 0);
     const where = `โซนที่ ${i + 1}`;
     if (!name || name.length > 60) return `${where}: กรอกชื่อโซน (ไม่เกิน 60 ตัวอักษร)`;
     if (note.length > 120) return `${where}: รายละเอียดยาวเกิน 120 ตัวอักษร`;
     if (!Number.isInteger(price) || price < 0 || price > MAX_TICKETS) return `${where}: ราคาต้องเป็นจำนวนเต็ม 0 ขึ้นไป (0 = ฟรี)`;
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_TICKETS) return `${where}: จำนวนบัตรต้องเป็นจำนวนเต็ม 1 ขึ้นไป`;
-    zones.push({ id: typeof zone.id === "string" && zone.id ? zone.id : undefined, name, note, price, capacity });
+    if (!Number.isInteger(tokens) || tokens < 0 || tokens > MAX_TICKETS) return `${where}: โทเคนต่อใบต้องเป็นจำนวนเต็ม 0 ขึ้นไป`;
+    zones.push({ id: typeof zone.id === "string" && zone.id ? zone.id : undefined, name, note, price, capacity, tokens });
   }
   return zones;
 }
@@ -212,7 +214,7 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
 
   const zoneIds = zones.map((zone) => zone.id ?? uuidv7());
   zones.forEach((zone, position) => {
-    const row = { name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, position };
+    const row = { name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, tokens: zone.tokens, position };
     queries.push(
       zone.id
         ? db
@@ -285,7 +287,7 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
   if (zones.length)
     queries.push(
       db.insert(ticketZones).values(
-        zones.map((zone) => ({ eventId: id, name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, position: zone.position })),
+        zones.map((zone) => ({ eventId: id, name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, tokens: zone.tokens, position: zone.position })),
       ),
     );
   await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
@@ -303,6 +305,9 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
   if (sold > 0) return { error: `ขายบัตรไปแล้ว ${sold} ใบ ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน` };
+  // Even lapsed or cancelled orders are a record of who tried to buy: an event with any stays, closed
+  const [hasOrders] = await db.select({ id: orders.id }).from(orders).where(eq(orders.eventId, id)).limit(1);
+  if (hasOrders) return { error: 'อีเวนต์นี้มีประวัติคำสั่งซื้อแล้ว ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน' };
 
   await db.delete(events).where(eq(events.id, id));
   await dropIfUnused([target.poster, ...target.gallery]);
