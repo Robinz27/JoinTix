@@ -51,8 +51,10 @@ export type EventFormValues = {
 type ZoneRow = EventFormZone & { key: string };
 
 const baht = new Intl.NumberFormat("th-TH");
-let nextKey = 0;
-const withKey = (zone: EventFormZone): ZoneRow => ({ ...zone, key: zone.id ?? `new-${nextKey++}` });
+// Keys for zones not saved yet. The first ones go by position, so the server's HTML and the browser agree
+// (a module-wide counter would have counted on in each and broken hydration); ones added later count from here
+let addedKey = 0;
+const withKey = (zone: EventFormZone, i: number): ZoneRow => ({ ...zone, key: zone.id ?? `start-${i}` });
 
 /** An ISO time as a datetime-local value in Thai time ("2026-12-14T19:00") */
 function toInput(iso: string | null) {
@@ -311,7 +313,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             <button
               type="button"
               disabled={zones.length >= 20}
-              onClick={() => setZones((rows) => [...rows, withKey({ name: "", note: "", price: 0, capacity: 100, sold: 0 })])}
+              onClick={() => setZones((rows) => [...rows, { name: "", note: "", price: 0, capacity: 100, sold: 0, key: `added-${addedKey++}` }])}
               className={`${pill} w-full justify-center border-dashed`}
             >
               <Icon icon={PlusSignIcon} className="size-4" />

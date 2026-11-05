@@ -95,6 +95,9 @@
 > 2. ปิด dev server ตัวเก่าทุกหน้าต่าง (Ctrl+C) แล้วรัน `npm i` และ `npm run dev:fresh` (ล้าง cache `.next` แล้วเปิดใหม่)
 > 3. ในเบราว์เซอร์กด **Ctrl+F5** เพื่อโหลดใหม่แบบไม่ใช้ cache
 >
+> **หน้าเว็บรีเฟรชเองรัวๆ ทุกครึ่งวินาที (ตอน `npm run dev`)?** มักเกิดจากรัน `npm run build` ทั้งที่ dev server ยังเปิดอยู่ ทั้งสองใช้โฟลเดอร์ `.next` เดียวกัน
+> ให้ปิด dev server (Ctrl+C) แล้วรัน `npm run dev:fresh` และครั้งหน้าปิด dev ก่อนค่อย build
+>
 > **โปรเจกต์อยู่ใน OneDrive?** แนะนำย้ายออกมาไว้ที่อื่น เช่น `C:\Projects\JoinTix` เพราะ OneDrive จะ sync `node_modules` หลายหมื่นไฟล์ ทำให้ช้ามากและล็อกไฟล์จน `npm` พัง
 >
 > Windows: สคริปต์ติดตั้ง Node.js ด้วย `winget` ถ้าไม่มีหรือใช้ไม่ได้จะโหลดตัวติดตั้งจาก nodejs.org ให้เอง
