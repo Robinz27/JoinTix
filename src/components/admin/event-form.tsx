@@ -16,6 +16,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { saveEvent } from "@/app/actions/admin-events";
 import { PUBLISH } from "@/components/admin/event-status";
+import { DateTimeField } from "@/components/admin/date-time-field";
 import { Choices, Notice, hint, label } from "@/components/admin/form";
 import { card, iconButton, input, pill, pillPrimary, tile } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
@@ -197,25 +198,22 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
 
           <Section icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id={`${ids}-starts`} title="เริ่มงาน">
-                <input id={`${ids}-starts`} name="startsAt" type="datetime-local" required defaultValue={toInput(event?.startsAt ?? null)} className={input} />
-              </Field>
-              <Field id={`${ids}-doors`} title="ประตูเปิด">
-                <input id={`${ids}-doors`} name="doorsAt" type="datetime-local" required defaultValue={toInput(event?.doorsAt ?? null)} className={input} />
-              </Field>
-              <Field id={`${ids}-sales-start`} title="เปิดขายบัตร" note="ก่อนเวลานี้หน้าเว็บขึ้นว่ารอเปิดขาย">
-                <input
-                  id={`${ids}-sales-start`}
-                  name="salesStartAt"
-                  type="datetime-local"
-                  required
-                  defaultValue={toInput(event?.salesStartAt ?? null)}
-                  className={input}
-                />
-              </Field>
-              <Field id={`${ids}-sales-end`} title="ปิดขายบัตร (ไม่บังคับ)" note="เว้นว่าง = ขายจนถึงเวลาเริ่มงาน">
-                <input id={`${ids}-sales-end`} name="salesEndAt" type="datetime-local" defaultValue={toInput(event?.salesEndAt ?? null)} className={input} />
-              </Field>
+              <DateTimeField id={`${ids}-starts`} name="startsAt" label="เริ่มงาน" defaultValue={toInput(event?.startsAt ?? null)} />
+              <DateTimeField id={`${ids}-doors`} name="doorsAt" label="ประตูเปิด" defaultValue={toInput(event?.doorsAt ?? null)} />
+              <DateTimeField
+                id={`${ids}-sales-start`}
+                name="salesStartAt"
+                label="เปิดขายบัตร"
+                note="ก่อนเวลานี้หน้าเว็บขึ้นว่ารอเปิดขาย"
+                defaultValue={toInput(event?.salesStartAt ?? null)}
+              />
+              <DateTimeField
+                id={`${ids}-sales-end`}
+                name="salesEndAt"
+                label="ปิดขายบัตร"
+                optional="ขายจนถึงเวลาเริ่มงาน"
+                defaultValue={toInput(event?.salesEndAt ?? null)}
+              />
             </div>
           </Section>
 

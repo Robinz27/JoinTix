@@ -187,7 +187,8 @@ src/
                             admin-nav.ts รายการเมนู (หน้าใหม่เพิ่มลิงก์ที่นี่), ui.tsx PageHeader / StatCard / Panel / th td ฯลฯ,
                             dialog.tsx กล่อง <dialog>, form.tsx Notice/Choices/label, member-actions.tsx ปุ่ม+dialog แก้ไข/อุปกรณ์/ลบ สมาชิก,
                             event-form.tsx ฟอร์มสร้าง/แก้อีเวนต์ + โซนบัตร, event-actions.tsx ปุ่มต่อแถว + dialog ลบ,
-                            event-delete-panel.tsx, event-status.ts ป้ายสถานะ
+                            event-delete-panel.tsx, event-status.ts ป้ายสถานะ,
+                            date-time-field.tsx ช่องเลือกวัน+เวลาแบบปฏิทินของ 4TUNEZ (ใช้แทน input datetime-local)
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
     banners.ts            ← รายการแบนเนอร์ (ตัวอย่าง รอดึงจาก DB) — รูปขนาด 5:2 เช่น 1500×600
