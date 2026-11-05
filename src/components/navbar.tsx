@@ -235,7 +235,7 @@ export function Navbar() {
           {account ? (
             <div className="menu-row border-t border-border pt-2" style={{ "--i": LINKS.length + 1 } as React.CSSProperties}>
               <AccountSummary account={account} />
-              <AccountRows onNavigate={closeMenu} />
+              <AccountRows account={account} onNavigate={closeMenu} />
             </div>
           ) : (
             <div className="menu-row flex gap-2 border-t border-border pt-2" style={{ "--i": LINKS.length + 1 } as React.CSSProperties}>

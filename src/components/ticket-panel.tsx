@@ -6,7 +6,8 @@ import { InformationCircleIcon, MinusSignIcon, PlusSignIcon, Ticket02Icon } from
 import { Icon } from "@/components/icon";
 import { VerifyEmailCode } from "@/components/verify-email-code";
 import { authClient } from "@/lib/auth-client";
-import type { EventStatus, TicketZone } from "@/lib/events";
+import { isBuyable, type EventStatus } from "@/lib/event-fields";
+import type { TicketZone } from "@/lib/events";
 
 const baht = new Intl.NumberFormat("th-TH");
 /** At or under this many left, the zone says how many */
@@ -22,19 +23,20 @@ function price(value: number) {
  * Booking itself (Redis seat lock → order) isn't built yet, so "continue" only says so for now.
  */
 export function TicketPanel({
-  eventId,
+  slug,
   status,
   zones,
   maxPerOrder,
   salesStart,
 }: {
-  eventId: string;
+  /** For coming back here after signing in */
+  slug: string;
   status: EventStatus;
   zones: TicketZone[];
   maxPerOrder: number;
   salesStart: string;
 }) {
-  const onSale = status === "on-sale" || status === "selling-fast";
+  const onSale = isBuyable(status);
   const [zoneId, setZoneId] = useState(() => (onSale ? zones.find((zone) => zone.remaining > 0)?.id : undefined));
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState(false);
@@ -63,6 +65,8 @@ export function TicketPanel({
           ? `เปิดขาย ${salesStart}`
           : status === "sold-out"
             ? "บัตรงานนี้หมดแล้ว"
+            : status === "closed"
+              ? "ปิดการขายแล้ว"
             : `ซื้อได้สูงสุด ${maxPerOrder} ใบต่อบัญชี`}
       </p>
 
@@ -156,13 +160,13 @@ export function TicketPanel({
       <div className="mt-4">
         {!onSale ? (
           <span className="btn-buy is-disabled flex h-11 items-center justify-center rounded-xl text-sm font-medium">
-            {status === "sold-out" ? "บัตรหมดแล้ว" : "ยังไม่เปิดขาย"}
+            {status === "sold-out" ? "บัตรหมดแล้ว" : status === "closed" ? "ปิดการขายแล้ว" : "ยังไม่เปิดขาย"}
           </span>
         ) : isPending ? (
           <span className="skeleton block h-11 rounded-xl" aria-hidden="true" />
         ) : !session ? (
           <Link
-            href={`/login?next=${encodeURIComponent(`/events/${eventId}`)}`}
+            href={`/login?next=${encodeURIComponent(`/events/${slug}`)}`}
             className="btn-buy flex h-11 items-center justify-center rounded-xl text-sm font-medium"
           >
             เข้าสู่ระบบเพื่อซื้อบัตร

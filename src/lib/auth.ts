@@ -56,6 +56,8 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       phone: { type: "string", required: true, input: true },
+      // input: false, so nobody can sign up as an admin; only a super admin changes it (app/admin/users)
+      role: { type: "string", required: false, defaultValue: "user", input: false },
     },
   },
   session: {

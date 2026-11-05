@@ -5,7 +5,8 @@ import { ArrowLeft01Icon, Calendar03Icon, Clock01Icon, Door01Icon, Location01Ico
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { TicketPanel } from "@/components/ticket-panel";
 import { FadeImage } from "@/components/ui/fade-image";
-import { FEATURED_EVENTS, getEvent } from "@/lib/events";
+import { getEvent, getEventSlugs } from "@/lib/events";
+import { isRemote } from "@/lib/poster";
 
 // Always Thai time, so the server and every visitor see the same date
 const dateFormat = new Intl.DateTimeFormat("th-TH", {
@@ -17,18 +18,19 @@ const dateFormat = new Intl.DateTimeFormat("th-TH", {
 });
 const timeFormat = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 
-// Every sample event is built ahead of time; any other id is a 404
-export function generateStaticParams() {
-  return FEATURED_EVENTS.map((event) => ({ id: event.id }));
+// Events on the site are built ahead of time; one published later renders on its first visit.
+// The [id] segment is the event's slug (events.slug)
+export async function generateStaticParams() {
+  return (await getEventSlugs()).map((id) => ({ id }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/events/[id]">): Promise<Metadata> {
-  const event = getEvent((await params).id);
+  const event = await getEvent((await params).id);
   return { title: event?.title ?? "ไม่พบอีเวนต์" };
 }
 
 export default async function EventPage({ params }: PageProps<"/events/[id]">) {
-  const event = getEvent((await params).id);
+  const event = await getEvent((await params).id);
   if (!event) notFound();
 
   const startsAt = new Date(event.startsAt);
@@ -48,7 +50,7 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
           <div className="stagger min-w-0">
             <div className="flex flex-col gap-5 sm:flex-row">
               <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden rounded-2xl bg-secondary sm:w-56">
-                <FadeImage src={event.poster} alt={`โปสเตอร์ ${event.title}`} fill preload sizes="(min-width: 640px) 224px, 100vw" className="object-cover" />
+                <FadeImage src={event.poster} alt={`โปสเตอร์ ${event.title}`} fill preload sizes="(min-width: 640px) 224px, 100vw" unoptimized={isRemote(event.poster)} className="object-cover" />
               </div>
 
               <div className="min-w-0">
@@ -87,7 +89,7 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
           {/* Sticks beside the details on wide screens; under them on phones */}
           <aside className="stagger-item lg:sticky lg:top-24 lg:self-start" style={{ "--i": 2 } as React.CSSProperties}>
             <TicketPanel
-              eventId={event.id}
+              slug={event.slug}
               status={event.status}
               zones={event.zones}
               maxPerOrder={event.maxPerOrder}

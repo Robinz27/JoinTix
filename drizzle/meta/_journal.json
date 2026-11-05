@@ -8,6 +8,20 @@
       "when": 1792853282343,
       "tag": "0000_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793826546282,
+      "tag": "0001_user_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793856301596,
+      "tag": "0002_events",
+      "breakpoints": true
     }
   ]
 }

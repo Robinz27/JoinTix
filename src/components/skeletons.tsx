@@ -161,3 +161,56 @@ export function ProfileSkeleton() {
     </main>
   );
 }
+
+/** หลังบ้าน content area: header, four stat cards and two panels, mirrors app/admin/page.tsx */
+export function AdminContentSkeleton() {
+  return (
+    <div>
+      <div className="mb-5 space-y-2 sm:mb-6">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-8 w-56 rounded-lg sm:h-9" />
+        <Skeleton className="h-3.5 w-64 max-w-full" />
+      </div>
+      <Skeleton className="mb-2.5 h-4 w-20" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-[118px] rounded-2xl sm:h-[138px]" />
+        ))}
+      </div>
+      <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Skeleton className="h-80 rounded-2xl" />
+        <Skeleton className="h-56 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+/** The whole back office while the session is checked, mirrors components/admin/admin-shell.tsx */
+export function AdminSkeleton() {
+  return (
+    <div className="flex min-h-svh">
+      <div className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-surface lg:flex">
+        <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
+          <Skeleton className="size-7 rounded-lg" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="space-y-1.5 px-2.5 py-3">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+        <div className="flex h-14 items-center gap-3 border-b border-border px-3 sm:px-5 lg:hidden">
+          <Skeleton className="size-5 rounded" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="px-3 py-5 sm:px-5 sm:py-6">
+          <div className="mx-auto max-w-6xl">
+            <AdminContentSkeleton />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
