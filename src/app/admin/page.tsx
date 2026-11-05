@@ -1,0 +1,129 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { count, desc, sql } from "drizzle-orm";
+import {
+  ArrowRight01Icon,
+  Calendar03Icon,
+  CheckmarkBadge01Icon,
+  ShieldUserIcon,
+  Ticket02Icon,
+  UserAdd01Icon,
+  UserMultipleIcon,
+} from "@hugeicons/core-free-icons";
+import { Badge, Empty, Initials, PageHeader, Panel, SectionTitle, StatCard } from "@/components/admin/ui";
+import { Icon } from "@/components/icon";
+import { getDb } from "@/db";
+import { user } from "@/db/schema";
+import { listAdminEvents } from "@/lib/admin-events";
+import { requireSuperAdmin } from "@/lib/session";
+
+export const metadata: Metadata = { title: "ภาพรวม" };
+
+const num = new Intl.NumberFormat("th-TH");
+const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
+
+export default async function AdminOverview() {
+  const { user: me } = await requireSuperAdmin();
+  const db = getDb();
+  const [[stats], recent, events] = await Promise.all([
+    db
+      .select({
+        total: count(),
+        verified: sql<number>`count(*) filter (where ${user.emailVerified})`.mapWith(Number),
+        lastWeek: sql<number>`count(*) filter (where ${user.createdAt} > now() - interval '7 days')`.mapWith(Number),
+        admins: sql<number>`count(*) filter (where ${user.role} = 'super_admin')`.mapWith(Number),
+      })
+      .from(user),
+    db
+      .select({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt })
+      .from(user)
+      .orderBy(desc(user.createdAt))
+      .limit(6),
+    listAdminEvents(),
+  ]);
+  const live = events.filter((e) => e.status === "published");
+  const onSale = live.filter((e) => e.sale === "on-sale" || e.sale === "selling-fast").length;
+  const comingSoon = live.filter((e) => e.sale === "coming-soon").length;
+  const sold = events.reduce((n, e) => n + e.sold, 0);
+  const revenue = events.reduce((n, e) => n + e.revenue, 0);
+
+  return (
+    <>
+      <PageHeader eyebrow="Dashboard" title={`สวัสดี ${me.name}`} description="สรุปสมาชิกและอีเวนต์ของ JoinTix" />
+
+      <SectionTitle icon={UserMultipleIcon} title="สมาชิก" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard featured icon={UserMultipleIcon} title="สมาชิกทั้งหมด" value={num.format(stats.total)} hint="บัญชีที่สมัครไว้" />
+        <StatCard
+          icon={CheckmarkBadge01Icon}
+          title="ยืนยันอีเมลแล้ว"
+          value={num.format(stats.verified)}
+          hint={stats.total ? `${Math.round((stats.verified / stats.total) * 100)}% ซื้อบัตรได้ทันที` : undefined}
+        />
+        <StatCard icon={UserAdd01Icon} title="สมัครใน 7 วัน" value={num.format(stats.lastWeek)} />
+        <StatCard icon={ShieldUserIcon} title="Super admin" value={num.format(stats.admins)} />
+      </div>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Panel
+          icon={UserAdd01Icon}
+          title="สมัครล่าสุด"
+          subtitle="6 บัญชีล่าสุด"
+          action={
+            <Link href="/admin/users" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground">
+              ดูทั้งหมด
+              <Icon icon={ArrowRight01Icon} className="size-3.5" />
+            </Link>
+          }
+        >
+          {recent.length === 0 ? (
+            <Empty icon={UserMultipleIcon} title="ยังไม่มีสมาชิก" />
+          ) : (
+            <ul className="divide-y divide-border">
+              {recent.map((member) => (
+                <li key={member.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                  <Initials name={member.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">{member.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                  </div>
+                  {member.emailVerified && <Badge tone="good">ยืนยันแล้ว</Badge>}
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums max-[379px]:hidden">{dateFormat.format(member.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          icon={Calendar03Icon}
+          title="อีเวนต์"
+          subtitle={`ขายแล้ว ${num.format(sold)} ใบ · ฿${num.format(revenue)}`}
+          action={
+            <Link href="/admin/events" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground">
+              ดูทั้งหมด
+              <Icon icon={ArrowRight01Icon} className="size-3.5" />
+            </Link>
+          }
+        >
+          <dl className="grid grid-cols-3 divide-x divide-border border-b border-border text-center">
+            {[
+              ["ทั้งหมด", events.length],
+              ["เปิดขาย", onSale],
+              ["รอเปิดขาย", comingSoon],
+            ].map(([label, value]) => (
+              <div key={label} className="px-2 py-4">
+                <dt className="text-2xs text-muted-foreground sm:text-xs">{label}</dt>
+                <dd className="mt-1 text-xl font-semibold text-foreground tabular-nums">{num.format(Number(value))}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="flex gap-2 px-4 py-3.5 text-xs text-muted-foreground sm:px-5">
+            <Icon icon={Ticket02Icon} className="mt-px size-4 shrink-0" />
+            ยอดขาย ออเดอร์ และการชำระเงินจะขึ้นที่นี่เมื่อมีตาราง Orders / Payments
+          </p>
+        </Panel>
+      </div>
+    </>
+  );
+}

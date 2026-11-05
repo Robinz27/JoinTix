@@ -11,7 +11,8 @@ import { SectionHeader } from "@/components/section-header";
 import { TextAnimate, animateSteps } from "@/components/text-animate";
 import { Hint } from "@/components/ui/hint";
 import { BANNERS } from "@/lib/banners";
-import { FEATURED_EVENTS } from "@/lib/events";
+import { EventCardSkeleton } from "@/components/skeletons";
+import { getFeaturedEvents } from "@/lib/events";
 
 const WELCOME = "ยินดีต้อนรับสู่";
 const SITE_NAME = "JoinTix";
@@ -84,16 +85,35 @@ export default function Home() {
       <section className="flex justify-center px-3">
         <div className="w-full max-w-5xl">
           <SectionHeader icon={SparklesIcon} title="อีเวนต์แนะนำ" subtitle="Recommended events" href="/events" />
-          <ul className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
-            {FEATURED_EVENTS.map((event, i) => (
-              // Rises in on scroll, each card a step after the one before
-              <li key={event.id} className="reveal" style={{ "--i": i } as React.CSSProperties}>
-                <EventCard event={event} />
-              </li>
-            ))}
-          </ul>
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <FeaturedEvents />
+          </Suspense>
         </div>
       </section>
     </main>
+  );
+}
+
+/** From the database (lib/events.ts, cached), so หลังบ้าน decides what's here */
+async function FeaturedEvents() {
+  const events = await getFeaturedEvents();
+  if (events.length === 0) return <p className="py-10 text-center text-sm text-muted-foreground">ยังไม่มีอีเวนต์แนะนำ</p>;
+  return (
+    <ul className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+      {events.map((event, i) => (
+        // Rises in on scroll, each card a step after the one before
+        <li key={event.id} className="reveal" style={{ "--i": i } as React.CSSProperties}>
+          <EventCard event={event} />
+        </li>
+      ))}
+    </ul>
   );
 }

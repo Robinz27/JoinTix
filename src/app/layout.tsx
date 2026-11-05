@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/navbar";
-import { SiteFooter } from "@/components/site-footer";
 import { THEME_SCRIPT } from "@/lib/theme";
 import { fontVariables } from "./fonts";
 import "./globals.css";
@@ -27,11 +25,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
         />
       </head>
-      <body className="min-h-full flex flex-col">
-        <Navbar />
-        {children}
-        <SiteFooter />
-      </body>
+      {/* The storefront's navbar and footer live in (site)/layout.tsx; หลังบ้าน (admin/) has its own frame */}
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

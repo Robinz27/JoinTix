@@ -3,7 +3,7 @@
 > **อ่านไฟล์นี้ก่อนเริ่มงานทุกครั้ง** ทั้งคนและ AI agent
 > ถ้าแก้อะไรที่กระทบเนื้อหาในไฟล์นี้ (stack, โครงสร้าง, สถานะ, ข้อตกลง) ให้อัปเดตไฟล์นี้ใน commit เดียวกัน
 
-อัปเดตล่าสุด: 2026-11-04
+อัปเดตล่าสุด: 2026-11-05
 
 ---
 
@@ -47,10 +47,12 @@
 | ติดตั้ง Next.js + Drizzle + Neon | ✅ เสร็จ |
 | เชื่อมต่อฐานข้อมูล (`/api/health`) | ✅ ทดสอบผ่าน |
 | ตารางระบบสมาชิก (`user`, `session`, `account`, `verification`) | ✅ สร้างใน Neon แล้ว (migration `drizzle/0000_auth.sql`) |
-| ออกแบบ DB schema ส่วนอีเวนต์ / ที่นั่ง / ตั๋ว / order | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ตาราง events ฯลฯ ให้อ้าง `user.id` ที่เป็น text) |
+| ตาราง `events` + `ticket_zones` | ✅ **ออกแบบเสร็จและสร้างใน Neon แล้ว** (migration `drizzle/0002_events.sql` มีอีเวนต์ตัวอย่าง 4 งานติดมาด้วย) PK เป็น UUIDv7 (`uuidv7()` ของ Postgres 18), `events.status` = `draft` / `published` / `closed`, สถานะขายที่หน้าเว็บ (เปิดขาย / ใกล้หมด / รอเปิดขาย / หมด / ปิดการขาย) **ไม่ได้เก็บ** คำนวณใน `saleStatus()` ของ `src/lib/events.ts` จากวันที่ + จำนวนที่เหลือ, `ticket_zones.sold` ให้ API จองเป็นคนอัปเดต (มี CHECK `sold` ≤ `capacity`) |
+| ออกแบบ DB schema ส่วนที่นั่ง / ตั๋ว / order / payment | ⏳ **กำลังออกแบบ — ยังไม่ต้องเขียนตาราง** (ให้อ้าง `user.id` ที่เป็น text และ `events.id` / `ticket_zones.id` ที่เป็น uuid) |
 | ระบบสมัครสมาชิก / เข้าสู่ระบบ / ออกจากระบบ | ✅ เสร็จ: `/register` (ชื่อ อีเมล เบอร์โทร รหัสผ่าน), `/login`, เมนูบัญชีใน navbar ยังไม่มี: หน้า `/tickets` |
 | ยืนยันอีเมล | ✅ เสร็จ 2 ทาง (ไม่บังคับตอนสมัคร/ล็อกอิน แต่ต้องยืนยันก่อนซื้อบัตร): (1) หน้า `/profile` กดส่งลิงก์ทางอีเมล เปิดลิงก์แล้วยืนยันให้เอง (ใช้ได้ 1 ชม.) (2) ในหน้าซื้อบัตร ถ้ายังไม่ยืนยันจะส่งรหัส 6 หลัก (Better Auth plugin `emailOTP`, 10 นาที กรอกผิดได้ 5 ครั้ง) ไม่มี `RESEND_API_KEY` ลิงก์/รหัสจะโผล่ใน terminal ของ server ลิงก์ในอีเมลใช้ `BETTER_AUTH_URL` เป็นโดเมน |
 | หน้า `/profile` | ✅ ชื่อ อีเมล เบอร์โทร วันที่สมัคร + สถานะยืนยันอีเมล (ยังแก้ข้อมูลไม่ได้) |
+| โรล Super admin + หลังบ้าน `/admin` | ✅ คอลัมน์ `user.role` (`user` / `super_admin`, migration `drizzle/0001_user_role.sql` รันกับ Neon แล้ว) ตอนนี้ super admin คือ rattanatrai.ros@spumail.net หน้า: ภาพรวม (สถิติสมาชิก), `/admin/users` (ค้นหา + ปุ่มต่อแถวแบบ 4TUNEZ: **แก้ไข** ชื่อ/อีเมล/เบอร์/สถานะยืนยันอีเมล/สิทธิ์/ตั้งรหัสผ่านใหม่ (ตั้งแล้วออกจากระบบทุกเครื่อง), **อุปกรณ์** ดูเครื่องที่ล็อกอินอยู่ + สั่งออกจากระบบ, **ลบบัญชี** ถาวร ต้องพิมพ์อีเมลยืนยัน; เปลี่ยนสิทธิ์/ลบบัญชีตัวเองไม่ได้ ยังไม่มี "ระงับบัญชี" เพราะต้องเพิ่มคอลัมน์), `/admin/events` จัดการอีเวนต์ครบ: รายการ (ค้นหา, แท็บ ทั้งหมด/เผยแพร่/ฉบับร่าง/ปิดการขาย, ยอดบัตรขายแล้ว + ยอดเงิน, ปุ่มแก้ไข/ดูหน้าขาย/ทำสำเนา/ลบ), `/admin/events/new` และ `/admin/events/[id]` (ฟอร์มเดียว: ชื่อ, slug, ผู้จัด, สถานที่, รายละเอียด, วันเริ่ม/ประตูเปิด/เปิดขาย/ปิดขาย (เวลาไทย), สถานะ, อีเวนต์แนะนำ, จำกัดใบต่อบัญชี, โปสเตอร์ (path หรือ https + เลือกจาก `public/posters`), โซนบัตร เพิ่ม/ลบ/เรียงลำดับ ราคา จำนวน; ยังอัปโหลดรูปไม่ได้) โซนที่ขายแล้วลบไม่ได้และลดจำนวนต่ำกว่าที่ขายไม่ได้ อีเวนต์ที่ขายแล้วลบไม่ได้ (ให้ปิดการขายแทน) บันทึกแล้วหน้าเว็บอัปเดตทันที (`updateTag("events")`) ภาพรวมแสดงสถิติอีเวนต์จริง หน้าตาแบบหลังบ้าน next.js-shop: เมนูข้างตายตัวบนจอใหญ่ / drawer + แถบบนบนมือถือ ตารางซ่อนคอลัมน์ตามขนาดจอ (ไม่ต้องเลื่อนข้าง) ไม่ใช่ super admin เข้าแล้วเจอ 404 ทุกหน้า/action ใน `/admin` ต้องเรียก `requireSuperAdmin()` จาก `@/lib/session` |
 | ลืมรหัสผ่าน | ✅ เสร็จ: `/forgot-password` ส่งลิงก์ทางอีเมล (Resend) → `/reset-password` ตั้งรหัสใหม่ ลิงก์ใช้ได้ครั้งเดียว 1 ชม. และออกจากระบบทุกอุปกรณ์ ถ้ายังไม่ใส่ `RESEND_API_KEY` ลิงก์จะไปโผล่ใน terminal ของ server แทน |
 | Upstash Redis (lock / rate limit / queue) | ⏳ ยังไม่เริ่ม |
 | API กดบัตร / สร้าง order | ⏳ ยังไม่เริ่ม |
@@ -58,10 +60,10 @@
 | Navbar + สลับธีมขาว/ดำ + ค้นหา (Ctrl K) | ✅ เสร็จ (sticky เป็นแคปซูลลอยตอนเลื่อนลง, มีเมนูมือถือ) |
 | หน้าแรก: ส่วน hero (พื้นหลัง veil เคลื่อนไหว, จุดสถานะ DB, ข้อความค่อยๆ ขึ้น) | ✅ เสร็จ (ยกมาจาก next.js-shop) |
 | หน้าแรก: แบนเนอร์อีเวนต์แบบสไลด์ (ขอบโค้ง, ปุ่มลูกศร, จุดบอกตำแหน่ง, เลื่อนเองทุก 5 วิ) | ✅ เสร็จ แต่ข้อมูลยังเป็นแบนเนอร์ตัวอย่างใน `src/lib/banners.ts` รูปใน `public/banners/` |
-| หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` รูปใน `public/posters/` |
+| หน้าแรก: อีเวนต์แนะนำ (การ์ดโปสเตอร์ 4:5, วันที่ + สถานที่, ปุ่มซื้อบัตรเปลี่ยนตามสถานะ) | ✅ เสร็จ ดึงจากตาราง `events` (ติ๊ก "อีเวนต์แนะนำ" ในหลังบ้าน) ผ่าน `getFeaturedEvents()` ที่ cache ไว้ 1 นาที รูปใน `public/posters/` |
 | Footer (ชื่อเว็บ + ลิขสิทธิ์, ลิงก์ 3 กลุ่ม, ชื่อ JoinTix แบบ Aceternity Text Hover Effect: เส้นขอบวาดเองตอนเลื่อนถึง + สีรุ้งตามเมาส์) | ✅ เสร็จ ลิงก์ส่วนใหญ่ยังไม่มีหน้า |
 | Animation + skeleton loading | ✅ หน้าแรก / login / register / ลืมรหัสผ่าน มี `loading.tsx` เป็น skeleton, รูปค่อยๆ เฟดขึ้นบน skeleton, การ์ดและ footer ลอยขึ้นตอนเลื่อน (`.reveal`) หน้าใหม่ให้เพิ่ม `loading.tsx` ด้วย (ดูหัว `src/components/ui/skeleton.tsx`) |
-| หน้าอีเวนต์ / เลือกซื้อบัตร `/events/[id]` (โปสเตอร์ + รายละเอียด, เลือกโซน + จำนวน จำกัดใบต่อบัญชี, สรุปราคา, ยังไม่ล็อกอินให้ไป `/login?next=`, ปุ่มเปลี่ยนตามสถานะขาย) | ✅ UI เสร็จ แต่ข้อมูลยังเป็นตัวอย่างใน `src/lib/events.ts` (`getEvent`) ต้องล็อกอินและยืนยันอีเมลก่อน ปุ่มซื้อยังแค่บอกว่าระบบจองกำลังพัฒนา รอ API กดบัตร (API ต้องเช็ก `emailVerified` ฝั่ง server ด้วย) |
+| หน้าอีเวนต์ / เลือกซื้อบัตร `/events/[id]` (โปสเตอร์ + รายละเอียด, เลือกโซน + จำนวน จำกัดใบต่อบัญชี, สรุปราคา, ยังไม่ล็อกอินให้ไป `/login?next=`, ปุ่มเปลี่ยนตามสถานะขาย) | ✅ UI เสร็จ ดึงจาก DB ด้วย `getEvent(slug)` (`[id]` ในพาธคือ `events.slug`, ฉบับร่างเปิดไม่เจอ) ต้องล็อกอินและยืนยันอีเมลก่อน ปุ่มซื้อยังแค่บอกว่าระบบจองกำลังพัฒนา รอ API กดบัตร (API ต้องเช็ก `emailVerified` ฝั่ง server ด้วย) |
 | หน้า `/events` (รายการทั้งหมด), `/docs` | ⏳ ยังไม่มี (ลิงก์ใน navbar จะขึ้น 404) |
 
 ---
@@ -154,8 +156,11 @@ EMAIL_FROM='JoinTix <onboarding@resend.dev>'
 src/
   app/
     api/health/route.ts   ← เช็กการเชื่อมต่อ DB
-    layout.tsx            ← ฟอนต์, script กันจอกระพริบตอนโหลดธีม, Navbar
-    page.tsx              ← หน้าแรก (hero + แบนเนอร์ + อีเวนต์แนะนำ)
+    layout.tsx            ← ฟอนต์, script กันจอกระพริบตอนโหลดธีม (ไม่มี Navbar แล้ว)
+    not-found.tsx         ← หน้า 404 (มี Navbar ในตัว) + NotFoundMessage
+    (site)/               ← route group หน้าฝั่งลูกค้าทั้งหมด (URL ไม่เปลี่ยน) layout.tsx ใส่ Navbar + footer
+                            หน้าใหม่ฝั่งลูกค้าให้วางในนี้ ส่วน admin/ อยู่นอก group เพราะมีกรอบของตัวเอง
+    (site)/page.tsx       ← หน้าแรก (hero + แบนเนอร์ + อีเวนต์แนะนำ)
     globals.css           ← ค่าสีธีมสว่าง/มืด + animation เมนู
     fonts.ts              ← Google Sans Flex + Noto Sans Thai
   components/
@@ -178,13 +183,21 @@ src/
     skeletons.tsx         ← skeleton ของแต่ละหน้า/ส่วน (Hero, Banner, Events, AuthCard)
     ui/skeleton.tsx       ← Skeleton / SkeletonText / LoadingRegion
     ui/fade-image.tsx     ← รูปที่เฟดขึ้นเมื่อโหลดเสร็จ มี skeleton ระหว่างรอ
+    admin/                ← หลังบ้าน (ยกแบบมาจาก next.js-shop): admin-shell.tsx กรอบ + เมนูข้าง/drawer,
+                            admin-nav.ts รายการเมนู (หน้าใหม่เพิ่มลิงก์ที่นี่), ui.tsx PageHeader / StatCard / Panel / th td ฯลฯ,
+                            dialog.tsx กล่อง <dialog>, form.tsx Notice/Choices/label, member-actions.tsx ปุ่ม+dialog แก้ไข/อุปกรณ์/ลบ สมาชิก,
+                            event-form.tsx ฟอร์มสร้าง/แก้อีเวนต์ + โซนบัตร, event-actions.tsx ปุ่มต่อแถว + dialog ลบ,
+                            event-delete-panel.tsx, event-status.ts ป้ายสถานะ
   lib/
     theme.ts              ← อ่าน/ตั้งค่าธีม
     banners.ts            ← รายการแบนเนอร์ (ตัวอย่าง รอดึงจาก DB) — รูปขนาด 5:2 เช่น 1500×600
-    events.ts             ← อีเวนต์แนะนำ (ตัวอย่าง รอดึงจาก DB) — โปสเตอร์ขนาด 4:5 เช่น 800×1000
+    events.ts             ← อ่านอีเวนต์ให้หน้าเว็บ (cache tag "events") + saleStatus() — โปสเตอร์ขนาด 4:5 เช่น 800×1000
+    event-fields.ts       ← type / ค่าคงที่ของอีเวนต์ที่ฝั่ง client import ได้ (ห้าม import lib/events.ts ใน "use client")
+    admin-events.ts       ← อ่านอีเวนต์ทุกสถานะให้หลังบ้าน (ไม่ผ่าน cache)
+    poster.ts, uuid.ts    ← เช็ก path โปสเตอร์ / สร้าง UUIDv7 ฝั่ง JS
   db/
     index.ts              ← getDb() สร้าง connection ตอนเรียกใช้ครั้งแรก
-    schema.ts             ← ตาราง Drizzle (ตอนนี้มีแค่ตารางของ Better Auth)
+    schema.ts             ← ตาราง Drizzle: ของ Better Auth + events, ticket_zones
   lib/
     auth.ts               ← ตั้งค่า Better Auth (ฝั่ง server)
     auth-client.ts        ← Better Auth ฝั่งเบราว์เซอร์ (navbar ใช้อ่าน session)
@@ -192,11 +205,14 @@ src/
     mail.ts               ← ส่งอีเมลผ่าน Resend + แม่แบบอีเมล (รีเซ็ตรหัสผ่าน, ลิงก์/รหัสยืนยันอีเมล)
   app/
     actions/auth.ts       ← server actions: signIn, signUp, signOut (ข้อความ error ภาษาไทย)
+    actions/admin.ts      ← server action ของหลังบ้าน: updateMember, memberSessions, signOutMember, deleteMember
+    actions/admin-events.ts ← saveEvent (สร้าง/แก้ + โซน ใน db.batch เดียว), duplicateEvent, deleteEvent
+    admin/                ← หลังบ้าน (layout เช็ก super admin, ภาพรวม / users / events)
     api/auth/[...all]/    ← endpoint ของ Better Auth
-    events/[id]/          ← หน้าอีเวนต์ + เลือกซื้อบัตร
-    profile/              ← ข้อมูลบัญชี + ยืนยันอีเมลด้วยลิงก์
-    login/, register/     ← หน้าเข้าสู่ระบบ / สมัครสมาชิก
-    forgot-password/, reset-password/ ← ขอลิงก์ลืมรหัสผ่าน / ตั้งรหัสใหม่
+    (site)/events/[id]/   ← หน้าอีเวนต์ + เลือกซื้อบัตร
+    (site)/profile/       ← ข้อมูลบัญชี + ยืนยันอีเมลด้วยลิงก์
+    (site)/login/, register/ ← หน้าเข้าสู่ระบบ / สมัครสมาชิก
+    (site)/forgot-password/, reset-password/ ← ขอลิงก์ลืมรหัสผ่าน / ตั้งรหัสใหม่
   components/
     auth/                 ← ฟอร์มล็อกอิน / สมัคร (สไตล์จาก next.js-shop)
     account-menu.tsx      ← เมนูบัญชีใน navbar + ปุ่มออกจากระบบ
@@ -261,10 +277,11 @@ scripts/setup.sh          ← สคริปต์ติดตั้งสำ�
 
 ## 8. งานถัดไป (ยังไม่มีใครรับ)
 
-1. ออกแบบ schema: Events, Seats, Tickets, Orders, Payments ← **ทำก่อน** (Users มีแล้วจาก Better Auth)
+1. ออกแบบ schema: Seats, Tickets, Orders, Payments ← **ทำก่อน** (Users มีแล้วจาก Better Auth, Events + ticket_zones มีแล้ว)
 2. ติดตั้ง Upstash Redis + เขียน Lua script ล็อกที่นั่ง
 3. Route Handler กดบัตร: เช็กคิว → ล็อก → สร้าง order (ปฏิเสธถ้า `session.user.emailVerified` เป็น false)
 4. หน้า UI: รายการอีเวนต์, ผังที่นั่ง, checkout (หน้าเลือกบัตร `/events/[id]` มีแล้ว ให้ต่อปุ่ม "ซื้อบัตร" ใน `src/components/ticket-panel.tsx` เข้ากับ API ข้อ 3)
+5. หลังบ้าน: ระงับบัญชี (ต้องเพิ่มคอลัมน์ เช่น `banned` คุยกลุ่มก่อน) / อัปโหลดโปสเตอร์ (ต้องมีที่เก็บไฟล์ เช่น Vercel Blob / R2 คุยกลุ่มก่อน) / พอมีตาราง Orders แล้ว ให้ยอด "ขายแล้ว" มาจาก order จริงและมีหน้าดูรายการ order
 
 ใครรับงานไหนให้เขียนชื่อไว้ท้ายข้อในไฟล์นี้
 

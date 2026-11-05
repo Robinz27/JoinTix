@@ -1,9 +1,22 @@
-export type EventStatus = "on-sale" | "selling-fast" | "coming-soon" | "sold-out";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { getDb } from "@/db";
+import { events, ticketZones } from "@/db/schema";
+import type { EventStatus } from "@/lib/event-fields";
+
+// Events for the storefront, from the events / ticket_zones tables (managed in หลังบ้าน /admin/events).
+// Reads are cached under EVENTS_TAG; every admin save calls updateTag(EVENTS_TAG) so the site shows it at
+// once. The cache also refreshes each minute, so a sale that opens by the clock flips on its own.
+
+export const EVENTS_TAG = "events";
+
+export { PUBLISH_STATES, SLUG_PATTERN, isBuyable, type EventStatus, type PublishState } from "@/lib/event-fields";
 
 export type EventSummary = {
   id: string;
+  slug: string;
   title: string;
-  /** ISO date-time of the show, in Thai time */
+  /** ISO date-time of the show */
   startsAt: string;
   venue: string;
   /** Cheapest ticket in baht; 0 is a free event */
@@ -37,111 +50,101 @@ export type EventDetail = EventSummary & {
   zones: TicketZone[];
 };
 
-// Placeholder events with drawn posters (public/posters) until events come from the database
-export const FEATURED_EVENTS: EventSummary[] = [
-  {
-    id: "midnight-echo",
-    title: "Midnight Echo Live 2026",
-    startsAt: "2026-12-14T19:00:00+07:00",
-    venue: "อิมแพ็ค อารีน่า เมืองทองธานี",
-    priceFrom: 1800,
-    status: "selling-fast",
-    poster: "/posters/midnight-echo.svg",
-    href: "/events/midnight-echo",
-  },
-  {
-    id: "reunion-eng60",
-    title: "งานเลี้ยงรุ่นวิศวะ รุ่น 60 คืนสู่เหย้า",
-    startsAt: "2026-12-27T18:00:00+07:00",
-    venue: "โรงแรมริมน้ำ กรุงเทพฯ",
-    priceFrom: 1200,
-    status: "on-sale",
-    poster: "/posters/reunion-eng60.svg",
-    href: "/events/reunion-eng60",
-  },
-  {
-    id: "indie-fest",
-    title: "Bangkok Indie Fest 2027",
-    startsAt: "2027-01-09T16:00:00+07:00",
-    venue: "ลานกลางเมือง กรุงเทพฯ",
-    priceFrom: 890,
-    status: "coming-soon",
-    poster: "/posters/indie-fest.svg",
-    href: "/events/indie-fest",
-  },
-  {
-    id: "countdown-2027",
-    title: "Countdown 2027 ริมเจ้าพระยา",
-    startsAt: "2026-12-31T20:00:00+07:00",
-    venue: "ริมแม่น้ำเจ้าพระยา กรุงเทพฯ",
-    priceFrom: 0,
-    status: "sold-out",
-    poster: "/posters/countdown-2027.svg",
-    href: "/events/countdown-2027",
-  },
-];
+/** At or under this share of tickets left, an event on sale shows as ใกล้หมด */
+const SELLING_FAST = 0.2;
 
-// Placeholder details and ticket zones for the event page (app/events/[id]) until they come from the database
-const DETAILS: Record<string, Omit<EventDetail, keyof EventSummary>> = {
-  "midnight-echo": {
-    organizer: "Echo Entertainment",
-    doorsAt: "2026-12-14T17:30:00+07:00",
-    salesStartAt: "2026-11-01T10:00:00+07:00",
-    description: [
-      "คอนเสิร์ตใหญ่ครั้งแรกของ Midnight Echo กับเพลงฮิตครบทุกอัลบั้ม พร้อมแสง สี เสียงเต็มรูปแบบ",
-      "ประตูเปิด 17:30 น. แสดงบัตรและบัตรประชาชนที่ทางเข้า ไม่อนุญาตให้นำกล้องมืออาชีพเข้างาน",
-    ],
-    maxPerOrder: 4,
-    zones: [
-      { id: "vip", name: "VIP", price: 6500, note: "ยืนหน้าเวที + ของที่ระลึก", remaining: 0 },
-      { id: "a", name: "โซน A", price: 4500, note: "ที่นั่งมีหมายเลข", remaining: 12 },
-      { id: "b", name: "โซน B", price: 3200, note: "ที่นั่งมีหมายเลข", remaining: 86 },
-      { id: "c", name: "โซน C", price: 1800, note: "ที่นั่งมีหมายเลข", remaining: 240 },
-    ],
-  },
-  "reunion-eng60": {
-    organizer: "สมาคมศิษย์เก่าวิศวะ รุ่น 60",
-    doorsAt: "2026-12-27T17:00:00+07:00",
-    salesStartAt: "2026-10-15T09:00:00+07:00",
-    description: [
-      "คืนสู่เหย้าวิศวะ รุ่น 60 ดินเนอร์บุฟเฟต์ ดนตรีสด และกิจกรรมจับรางวัล",
-      "แต่งกายสุภาพ ธีมสีน้ำเงิน ลงทะเบียนหน้างานตั้งแต่ 17:00 น.",
-    ],
-    maxPerOrder: 2,
-    zones: [
-      { id: "table", name: "โต๊ะจีน (ต่อที่นั่ง)", price: 1500, note: "ที่นั่งโต๊ะละ 10 คน", remaining: 64 },
-      { id: "standard", name: "บุฟเฟต์", price: 1200, note: "ที่นั่งอิสระ", remaining: 130 },
-    ],
-  },
-  "indie-fest": {
-    organizer: "Bangkok Indie Collective",
-    doorsAt: "2027-01-09T15:00:00+07:00",
-    salesStartAt: "2026-12-01T12:00:00+07:00",
-    description: [
-      "เทศกาลดนตรีอินดี้กลางเมือง 3 เวที กว่า 20 วง ตั้งแต่บ่ายจนดึก",
-      "มีโซนอาหารและตลาดนัดงานคราฟต์ เด็กอายุต่ำกว่า 12 ปีเข้าฟรีเมื่อมากับผู้ปกครอง",
-    ],
-    maxPerOrder: 6,
-    zones: [
-      { id: "early", name: "Early Bird", price: 890, note: "บัตรยืน เข้าได้ทุกเวที", remaining: 300 },
-      { id: "regular", name: "บัตรทั่วไป", price: 1290, note: "บัตรยืน เข้าได้ทุกเวที", remaining: 800 },
-    ],
-  },
-  "countdown-2027": {
-    organizer: "กรุงเทพมหานคร",
-    doorsAt: "2026-12-31T18:00:00+07:00",
-    salesStartAt: "2026-12-01T10:00:00+07:00",
-    description: [
-      "นับถอยหลังสู่ปี 2027 ริมแม่น้ำเจ้าพระยา ชมพลุและคอนเสิร์ตฟรี",
-      "ต้องลงทะเบียนรับบัตรล่วงหน้าเพื่อจำกัดจำนวนคนในพื้นที่",
-    ],
-    maxPerOrder: 2,
-    zones: [{ id: "free", name: "บัตรเข้างาน", price: 0, note: "ลงทะเบียนฟรี", remaining: 0 }],
-  },
-};
+/** The sale status for the site, from the admin's setting, the clock and what's left */
+export function saleStatus(
+  event: { status: string; startsAt: Date; salesStartAt: Date; salesEndAt: Date | null },
+  zones: { capacity: number; sold: number }[],
+  now = Date.now(),
+): EventStatus {
+  if (event.status === "closed" || now >= (event.salesEndAt ?? event.startsAt).getTime()) return "closed";
+  const capacity = zones.reduce((sum, zone) => sum + zone.capacity, 0);
+  const left = zones.reduce((sum, zone) => sum + zone.capacity - zone.sold, 0);
+  if (now < event.salesStartAt.getTime()) return "coming-soon";
+  if (left <= 0) return "sold-out";
+  return left / capacity <= SELLING_FAST ? "selling-fast" : "on-sale";
+}
 
-export function getEvent(id: string): EventDetail | undefined {
-  const summary = FEATURED_EVENTS.find((event) => event.id === id);
-  const detail = DETAILS[id];
-  return summary && detail ? { ...summary, ...detail } : undefined;
+type EventRow = typeof events.$inferSelect;
+type ZoneRow = typeof ticketZones.$inferSelect;
+
+function summarize(event: EventRow, zones: ZoneRow[]): EventSummary {
+  return {
+    id: event.id,
+    slug: event.slug,
+    title: event.title,
+    startsAt: event.startsAt.toISOString(),
+    venue: event.venue,
+    priceFrom: zones.length ? Math.min(...zones.map((zone) => zone.price)) : 0,
+    status: saleStatus(event, zones),
+    poster: event.poster,
+    href: `/events/${event.slug}`,
+  };
+}
+
+async function zonesOf(eventIds: string[]) {
+  if (eventIds.length === 0) return new Map<string, ZoneRow[]>();
+  const rows = await getDb()
+    .select()
+    .from(ticketZones)
+    .where(inArray(ticketZones.eventId, eventIds))
+    .orderBy(asc(ticketZones.position), asc(ticketZones.createdAt));
+  const byEvent = new Map<string, ZoneRow[]>();
+  for (const row of rows) byEvent.set(row.eventId, [...(byEvent.get(row.eventId) ?? []), row]);
+  return byEvent;
+}
+
+/** อีเวนต์แนะนำ on the home page: featured events on the site, soonest first */
+export async function getFeaturedEvents(): Promise<EventSummary[]> {
+  "use cache";
+  cacheTag(EVENTS_TAG);
+  cacheLife("minutes");
+  const rows = await getDb()
+    .select()
+    .from(events)
+    .where(and(eq(events.featured, true), inArray(events.status, ["published", "closed"])))
+    .orderBy(asc(events.startsAt))
+    .limit(8);
+  const zones = await zonesOf(rows.map((row) => row.id));
+  return rows.map((row) => summarize(row, zones.get(row.id) ?? []));
+}
+
+/** Every slug on the site, for generateStaticParams */
+export async function getEventSlugs(): Promise<string[]> {
+  "use cache";
+  cacheTag(EVENTS_TAG);
+  cacheLife("minutes");
+  const rows = await getDb()
+    .select({ slug: events.slug })
+    .from(events)
+    .where(inArray(events.status, ["published", "closed"]));
+  return rows.map((row) => row.slug);
+}
+
+/** One event for its page (/events/<slug>); drafts aren't found */
+export async function getEvent(slug: string): Promise<EventDetail | undefined> {
+  "use cache";
+  cacheTag(EVENTS_TAG);
+  cacheLife("minutes");
+  const [event] = await getDb()
+    .select()
+    .from(events)
+    .where(and(eq(events.slug, slug), inArray(events.status, ["published", "closed"])))
+    .limit(1);
+  if (!event) return undefined;
+  const zones = (await zonesOf([event.id])).get(event.id) ?? [];
+  return {
+    ...summarize(event, zones),
+    organizer: event.organizer,
+    doorsAt: event.doorsAt.toISOString(),
+    salesStartAt: event.salesStartAt.toISOString(),
+    description: event.description
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean),
+    maxPerOrder: event.maxPerOrder,
+    zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold })),
+  };
 }

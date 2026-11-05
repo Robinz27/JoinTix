@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Calendar03Icon, Location01Icon, Ticket02Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { FadeImage } from "@/components/ui/fade-image";
+import { isBuyable } from "@/lib/event-fields";
 import type { EventSummary } from "@/lib/events";
+import { isRemote } from "@/lib/poster";
 
 // Always Thai time, so the server and every visitor see the same date
 const dateFormat = new Intl.DateTimeFormat("th-TH", {
@@ -14,7 +16,7 @@ const dateFormat = new Intl.DateTimeFormat("th-TH", {
 });
 
 export function EventCard({ event, preload = false }: { event: EventSummary; preload?: boolean }) {
-  const buyable = event.status === "on-sale" || event.status === "selling-fast";
+  const buyable = isBuyable(event.status);
 
   return (
     <article className="event-card group relative flex h-full flex-col overflow-hidden rounded-2xl border p-2.5 sm:p-3">
@@ -27,6 +29,7 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
             fill
             preload={preload}
             sizes="(min-width: 1048px) 240px, (min-width: 1024px) 25vw, 50vw"
+            unoptimized={isRemote(event.poster)}
             className="event-poster object-cover"
           />
         </Link>
@@ -59,6 +62,8 @@ export function EventCard({ event, preload = false }: { event: EventSummary; pre
             </>
           ) : event.status === "sold-out" ? (
             "บัตรหมดแล้ว"
+          ) : event.status === "closed" ? (
+            "ปิดการขายแล้ว"
           ) : (
             "ดูรายละเอียด"
           )}

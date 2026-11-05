@@ -3,16 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown01Icon, Logout03Icon, Ticket01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Logout03Icon, ShieldUserIcon, Ticket01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { authClient } from "@/lib/auth-client";
 
-export type Account = { name: string; email: string };
+export type Account = { name: string; email: string; role?: string | null };
 
 const LINKS = [
   { href: "/tickets", label: "บัตรของฉัน", icon: Ticket01Icon },
   { href: "/profile", label: "ข้อมูลบัญชี", icon: UserCircleIcon },
 ];
+const ADMIN_LINK = { href: "/admin", label: "หลังบ้าน", icon: ShieldUserIcon };
+
+/** The menu's links, with หลังบ้าน for a super admin (only a shortcut: /admin checks the role itself) */
+function linksFor(account?: Account | null) {
+  return account?.role === "super_admin" ? [...LINKS, ADMIN_LINK] : LINKS;
+}
 
 /** Signs out through Better Auth's client, so the navbar's session updates at once, then reloads the page data */
 export function useSignOut() {
@@ -73,7 +79,7 @@ export function AccountDropdown({ account }: { account: Account }) {
         <div role="menu" className="dropdown-pop absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl shadow-black/10 dark:shadow-black/40">
           <AccountSummary account={account} />
           <div className="my-1 h-px bg-border" />
-          {LINKS.map((link) => (
+          {linksFor(account).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -118,11 +124,11 @@ export function AccountSummary({ account }: { account: Account }) {
 }
 
 /** The same links as rows, for the phone menu */
-export function AccountRows({ onNavigate }: { onNavigate: () => void }) {
+export function AccountRows({ account, onNavigate }: { account?: Account | null; onNavigate: () => void }) {
   const signOut = useSignOut();
   return (
     <>
-      {LINKS.map((link) => (
+      {linksFor(account).map((link) => (
         <Link
           key={link.href}
           href={link.href}
