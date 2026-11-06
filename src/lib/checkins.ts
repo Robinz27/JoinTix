@@ -66,12 +66,12 @@ export async function undoCheckIn(ticketId: string, adminId: string): Promise<bo
   return Boolean(undone);
 }
 
-export type DoorEvent = { id: string; title: string; startsAt: string };
+export type DoorEvent = { id: string; title: string; startsAt: string; venue: string; poster: string };
 
 /** The events a door can be for: on the site, soonest first, ones over more than a day ago last */
 export async function doorEvents(): Promise<DoorEvent[]> {
   const rows = await getDb()
-    .select({ id: events.id, title: events.title, startsAt: events.startsAt })
+    .select({ id: events.id, title: events.title, startsAt: events.startsAt, venue: events.venue, poster: events.poster })
     .from(events)
     .where(inArray(events.status, ["published", "closed"]))
     .orderBy(sql`${events.startsAt} < now() - interval '1 day'`, asc(events.startsAt));
