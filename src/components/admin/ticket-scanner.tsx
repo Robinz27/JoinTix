@@ -18,6 +18,7 @@ import {
   UserCheck01Icon,
 } from "@hugeicons/core-free-icons";
 import { admitTicket, doorFeed, scanTicket, undoAdmit } from "@/app/actions/orders";
+import { DoorPicker } from "@/components/admin/door-picker";
 import { ScanBadge } from "@/components/admin/scan-badge";
 import { card, input, pill, pillPrimary } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
@@ -33,7 +34,6 @@ type Outcome = DoorScan & { scanned: string; undone?: boolean };
 
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Bangkok" });
-const day = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 const num = new Intl.NumberFormat("th-TH");
 const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${num.format(n)}`);
 const DOOR_KEY = "jointix-door-event";
@@ -191,22 +191,7 @@ export function TicketScanner({ events, initialEvent }: { events: DoorEvent[]; i
   return (
     <div className="space-y-4">
       <section className={`${card} flex flex-wrap items-center gap-3 p-3 sm:p-4`}>
-        <label className="min-w-0 flex-1">
-          <span className="mb-1 block text-2xs text-muted-foreground">ประตูนี้สแกนบัตรของงาน</span>
-          <select
-            value={door ?? ""}
-            onChange={(e) => chooseDoor(e.target.value || null)}
-            className={`${input} cursor-pointer appearance-none pr-8`}
-            aria-label="เลือกอีเวนต์ของประตูนี้"
-          >
-            <option value="">ทุกงาน (ไม่ตรวจว่าบัตรเป็นของงานไหน)</option>
-            {events.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.title} · {day.format(new Date(e.startsAt))}
-              </option>
-            ))}
-          </select>
-        </label>
+        <DoorPicker events={events} value={door} onChange={chooseDoor} />
         {feed.stats && (
           <div className="flex items-center gap-4">
             <Counter label="บัตรเข้างานแล้ว" value={feed.stats.checkedIn} total={feed.stats.tickets} />
