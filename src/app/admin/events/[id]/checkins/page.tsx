@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download04Icon, QrCode01Icon, Search01Icon, Ticket02Icon, UserCheck01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons";
 import { ScanBadge } from "@/components/admin/scan-badge";
-import { BackLink, Badge, Empty, MiniStat, PageHeader, card, input, pill, pillPrimary, td, tdMain, tdTight, th } from "@/components/admin/ui";
+import { Badge, Empty, MiniStat, card, input, pill, pillPrimary, td, tdMain, tdTight, th } from "@/components/admin/ui";
 import { UndoCheckinButton } from "@/components/admin/undo-checkin-button";
 import { Icon } from "@/components/icon";
 import { getAdminEvent } from "@/lib/admin-events";
 import { checkinList, doorStats, scanLog } from "@/lib/checkins";
-import { requireSuperAdmin } from "@/lib/session";
+import { can } from "@/lib/permissions";
+import { requirePermission } from "@/lib/session";
 
 export const metadata: Metadata = { title: "รายชื่อเข้างาน" };
 
@@ -23,7 +24,8 @@ const STATES = [
 
 export default async function CheckinsPage({ params, searchParams }: PageProps<"/admin/events/[id]/checkins">) {
   const { id } = await params;
-  await requireSuperAdmin(`/admin/events/${id}/checkins`);
+  const { access } = await requirePermission("attendees.view", `/admin/events/${id}/checkins`);
+  const canScan = can(access, "door.scan");
   const [event, query] = await Promise.all([getAdminEvent(id), searchParams]);
   if (!event) notFound();
 
@@ -47,17 +49,18 @@ export default async function CheckinsPage({ params, searchParams }: PageProps<"
 
   return (
     <>
-      <BackLink href={`/admin/events/${event.id}`}>{event.title}</BackLink>
-      <PageHeader eyebrow="Check-in" title="รายชื่อเข้างาน" description={event.title}>
-        <Link href={`/admin/scan?event=${event.id}`} className={`${pillPrimary} max-sm:flex-1 max-sm:justify-center`}>
-          <Icon icon={QrCode01Icon} className="size-4" />
-          สแกนบัตร
-        </Link>
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        {canScan && (
+          <Link href={`/admin/scan?event=${event.id}`} className={`${pillPrimary} max-sm:flex-1 max-sm:justify-center`}>
+            <Icon icon={QrCode01Icon} className="size-4" />
+            สแกนบัตร
+          </Link>
+        )}
         <a href={`/admin/events/${event.id}/checkins/csv`} className={`${pill} max-sm:flex-1 max-sm:justify-center`}>
           <Icon icon={Download04Icon} className="size-4" />
           ดาวน์โหลด CSV
         </a>
-      </PageHeader>
+      </div>
 
       <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <MiniStat icon={Ticket02Icon} label="บัตรทั้งหมด" value={num.format(stats.tickets)} />
@@ -134,6 +137,7 @@ export default async function CheckinsPage({ params, searchParams }: PageProps<"
                       <p className="truncate text-xs text-muted-foreground">
                         {row.holder.phone} · {row.holder.email}
                       </p>
+                      {row.buyer && <p className="truncate text-2xs text-muted-foreground">ซื้อโดย {row.buyer.name}</p>}
                       <p className="mt-0.5 truncate text-2xs text-muted-foreground md:hidden">
                         {row.zone} · <span className="font-mono">{row.code}</span>
                       </p>
@@ -157,7 +161,7 @@ export default async function CheckinsPage({ params, searchParams }: PageProps<"
                         <Badge>ยังไม่เข้า</Badge>
                       )}
                     </td>
-                    <td className={`${tdTight} text-right`}>{row.status === "used" && <UndoCheckinButton ticketId={row.ticketId} holder={row.holder.name} />}</td>
+                    <td className={`${tdTight} text-right`}>{canScan && row.status === "used" && <UndoCheckinButton ticketId={row.ticketId} holder={row.holder.name} />}</td>
                   </tr>
                 ))}
               </tbody>

@@ -17,6 +17,7 @@ import { AccountDropdown, AccountRows, AccountSummary } from "@/components/accou
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { SearchDialog } from "@/components/search-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TokenChip } from "@/components/token-chip";
 import { authClient } from "@/lib/auth-client";
 
 type NavLink = { href: string; label: string; icon: IconSvgElement };
@@ -169,7 +170,10 @@ export function Navbar() {
               // Holds the place while the session loads, so the buttons don't flash in and out
               <span aria-hidden="true" className="skeleton h-9 w-56 rounded-full" />
             ) : account ? (
-              <AccountDropdown account={account} />
+              <>
+                <TokenChip />
+                <AccountDropdown account={account} />
+              </>
             ) : (
               <>
                 <Link href="/login" className={outlineButton}>
@@ -185,6 +189,8 @@ export function Navbar() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 min-[400px]:gap-2 md:hidden">
+            {/* Tokens stay in sight on a phone too: that's where they're spent (components/token-chip.tsx) */}
+            {account && <TokenChip compact />}
             <button type="button" onClick={openSearch} aria-label="ค้นหาอีเวนต์" aria-haspopup="dialog" className={iconButton}>
               <Icon icon={Search01Icon} className="size-4" />
             </button>

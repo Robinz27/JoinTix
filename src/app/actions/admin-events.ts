@@ -1,21 +1,25 @@
 "use server";
 
-import { and, eq, like, notInArray, or, sql, sum } from "drizzle-orm";
+import { and, asc, eq, inArray, like, notInArray, sum } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { events, orders, ticketZones } from "@/db/schema";
+import { events, merchItems, merchVariants, orders, ticketZones } from "@/db/schema";
 import type { AdminFormState } from "@/app/actions/admin";
+import { dropIfUnused } from "@/lib/admin-events";
+import { auditQuery, changesOf } from "@/lib/audit";
+import type { AuditChange } from "@/lib/audit-actions";
 import { EVENTS_TAG, PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/events";
 import { MAX_GALLERY } from "@/lib/event-fields";
 import { isShortMapLink, parsePin, type Pin } from "@/lib/map";
 import { isPosterSrc } from "@/lib/poster";
-import { requireSuperAdmin } from "@/lib/session";
-import { deleteUploadedImage, isUploadPath, saveUploadedImage } from "@/lib/uploads";
+import { requirePermission } from "@/lib/session";
+import { deleteUploadedImage, saveUploadedImage } from "@/lib/uploads";
+import { isPromptPayTarget } from "@/lib/promptpay";
 import { uuidv7 } from "@/lib/uuid";
 
-// หลังบ้าน's event actions (app/admin/events, components/admin/event-form.tsx). Each checks for a super admin
+// หลังบ้าน's event actions (app/admin/events, components/admin/event-form.tsx). Each checks the permission
 // itself, and each save expires the storefront's cached events (lib/events.ts) so the change shows at once.
 
 const MAX_ZONES = 20;
@@ -29,6 +33,34 @@ function thaiTime(value: string): Date | undefined {
   const date = new Date(`${value}:00+07:00`);
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
+
+/** What each field of an event and a zone is called in ประวัติการใช้งาน */
+const EVENT_LABELS = {
+  title: "ชื่ออีเวนต์",
+  slug: "ลิงก์ (slug)",
+  organizer: "ผู้จัด",
+  venue: "สถานที่",
+  venueArea: "เขต / จังหวัด",
+  latitude: "หมุดแผนที่ (ละติจูด)",
+  longitude: "หมุดแผนที่ (ลองจิจูด)",
+  description: "รายละเอียด",
+  poster: "โปสเตอร์",
+  gallery: "รูปเพิ่มเติม",
+  startsAt: "วันเวลาเริ่มงาน",
+  doorsAt: "ประตูเปิด",
+  salesStartAt: "เปิดขาย",
+  salesEndAt: "ปิดขาย",
+  status: "สถานะ",
+  featured: "อีเวนต์แนะนำ",
+  maxPerOrder: "จำกัดใบต่อบัญชี",
+  tokenPrice: "ราคาโทเคน (บาท)",
+  promptpayId: "พร้อมเพย์ที่รับเงิน",
+  promptpayName: "ชื่อบัญชีรับเงิน",
+  slipCheck: "วิธีตรวจสลิป",
+  allowReentry: "ให้กลับเข้างานซ้ำได้",
+};
+const ZONE_LABELS = { name: "ชื่อโซน", note: "รายละเอียด", price: "ราคา (บาท)", capacity: "จำนวนบัตร", tokens: "โทเคนต่อใบ", position: "ลำดับ" };
+const zoneSummary = (zone: { price: number; capacity: number; tokens: number }) => `฿${zone.price.toLocaleString("th-TH")} × ${zone.capacity.toLocaleString("th-TH")} ใบ, ${zone.tokens} โทเคน/ใบ`;
 
 /** One zone row from the form; `id` is set for a zone that's already saved */
 type ZoneInput = { id?: string; name: string; note: string; price: number; capacity: number; tokens: number };
@@ -100,7 +132,7 @@ function parseGallery(form: FormData): { entries: (string | File)[] } | { error:
 
 /** สร้าง / แก้ไขอีเวนต์: every field of the event and its whole list of zones, written together */
 export async function saveEvent(_: SaveEventState, form: FormData): Promise<SaveEventState> {
-  await requireSuperAdmin("/admin/events");
+  await requirePermission("events.manage", "/admin/events");
   const id = text(form, "eventId");
   const title = text(form, "title");
   const slug = text(form, "slug").toLowerCase();
@@ -125,6 +157,11 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   const status = text(form, "status") as PublishState;
   const featured = form.get("featured") === "1";
   const maxPerOrder = Number(text(form, "maxPerOrder"));
+  const tokenPrice = Number(text(form, "tokenPrice"));
+  const promptpayId = text(form, "promptpayId").replace(/[\s-]/g, "");
+  const promptpayName = text(form, "promptpayName");
+  const slipCheck = text(form, "slipCheck") === "manual" ? "manual" : "api";
+  const allowReentry = form.get("allowReentry") === "1";
 
   if (!title || title.length > 120) return { error: "กรอกชื่ออีเวนต์ (ไม่เกิน 120 ตัวอักษร)" };
   if (!new RegExp(`^${SLUG_PATTERN}$`).test(slug) || slug.length > 80)
@@ -143,6 +180,9 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   if (salesEndAt && (salesEndAt <= salesStartAt || salesEndAt > startsAt)) return { error: "วันปิดขายต้องอยู่หลังวันเปิดขาย และไม่เกินเวลาเริ่มงาน" };
   if (!PUBLISH_STATES.includes(status)) return { error: "เลือกสถานะให้ถูกต้อง" };
   if (!Number.isInteger(maxPerOrder) || maxPerOrder < 1 || maxPerOrder > 20) return { error: "จำกัดต่อบัญชีต้องเป็น 1–20 ใบ" };
+  if (!Number.isInteger(tokenPrice) || tokenPrice < 1 || tokenPrice > 100_000) return { error: "ราคาโทเคนต้องเป็นจำนวนเต็ม 1 บาทขึ้นไป" };
+  if (promptpayId && !isPromptPayTarget(promptpayId)) return { error: "พร้อมเพย์ต้องเป็นเบอร์มือถือ 10 หลัก เลขบัตรประชาชน 13 หลัก หรือเลข e-Wallet 15 หลัก" };
+  if (promptpayName.length > 120) return { error: "ชื่อบัญชียาวเกิน 120 ตัวอักษร" };
   const zones = parseZones(String(form.get("zones") ?? ""));
   if (typeof zones === "string") return { error: zones };
   const galleryInput = parseGallery(form);
@@ -154,8 +194,9 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
 
   let oldPictures: string[] = [];
   let savedZones: (typeof ticketZones.$inferSelect)[] = [];
+  let existing: typeof events.$inferSelect | undefined;
   if (id) {
-    const [existing] = await db.select({ poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
+    [existing] = await db.select().from(events).where(eq(events.id, id)).limit(1);
     if (!existing) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
     oldPictures = [existing.poster, ...existing.gallery];
     // A zone people have bought into can't go away, or shrink below what's sold
@@ -195,7 +236,7 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     stored.push(saved.path);
   }
 
-  const values = { title, slug, organizer, venue, venueArea, latitude, longitude, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder };
+  const values = { title, slug, organizer, venue, venueArea, latitude, longitude, description, poster, gallery, startsAt, doorsAt, salesStartAt, salesEndAt, status, featured, maxPerOrder, tokenPrice, promptpayId, promptpayName, slipCheck, allowReentry };
   const queries: BatchItem<"pg">[] = [];
   let eventId = id;
 
@@ -225,6 +266,25 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
     );
   });
 
+  // What changed, field by field and zone by zone, written in the same transaction
+  const changes: AuditChange[] = changesOf(existing, values, EVENT_LABELS);
+  zones.forEach((zone, position) => {
+    const saved = savedZones.find((row) => row.id === zone.id);
+    const prefix = { field: `zones.${zoneIds[position]}`, label: saved ? `โซน ${saved.name}` : `โซน ${zone.name} (ใหม่)` };
+    changes.push(...changesOf(saved, { ...zone, position }, saved ? ZONE_LABELS : { ...ZONE_LABELS, position: undefined }, prefix));
+  });
+  for (const zone of savedZones.filter((row) => !kept.has(row.id)))
+    changes.push({ field: `zones.${zone.id}`, label: `โซน ${zone.name} (ลบ)`, from: zoneSummary(zone), to: null });
+  queries.push(
+    ...(await auditQuery({
+      action: id ? "event.update" : "event.create",
+      target: { type: "event", id: eventId, label: title },
+      eventId,
+      changes,
+      details: stored.length ? { uploadedPictures: stored } : undefined,
+    })),
+  );
+
   // One round trip, in one transaction: the event and its zones change together or not at all
   try {
     await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
@@ -241,25 +301,15 @@ export async function saveEvent(_: SaveEventState, form: FormData): Promise<Save
   return { ok: "บันทึกแล้ว หน้าเว็บอัปเดตทันที", zoneIds, poster, gallery };
 }
 
-/** Uploaded pictures no event shows any more are deleted (ทำสำเนา shares pictures between events) */
-async function dropIfUnused(pictures: string[]) {
-  for (const picture of pictures.filter(isUploadPath)) {
-    const [used] = await getDb()
-      .select({ id: events.id })
-      .from(events)
-      .where(or(eq(events.poster, picture), sql`${picture} = any(${events.gallery})`))
-      .limit(1);
-    if (!used) await deleteUploadedImage(picture);
-  }
-}
-
-/** ทำสำเนา: a draft copy with the same details and zones, nothing sold, then straight to editing it */
+/** ทำสำเนา: a draft copy with the same details, zones and merchandise, nothing sold, then straight to editing it */
 export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
-  await requireSuperAdmin("/admin/events");
+  await requirePermission("events.manage", "/admin/events");
   const db = getDb();
   const [source] = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
   if (!source) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
   const zones = await db.select().from(ticketZones).where(eq(ticketZones.eventId, eventId));
+  const items = await db.select().from(merchItems).where(eq(merchItems.eventId, eventId)).orderBy(asc(merchItems.position));
+  const options = items.length ? await db.select().from(merchVariants).where(inArray(merchVariants.itemId, items.map((item) => item.id))) : [];
 
   // midnight-echo → midnight-echo-copy, -copy-2, …
   const base = `${source.slug.slice(0, 70)}-copy`;
@@ -282,6 +332,12 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
     salesStartAt: source.salesStartAt,
     salesEndAt: source.salesEndAt,
     maxPerOrder: source.maxPerOrder,
+    tokenPrice: source.tokenPrice,
+    shippingFee: source.shippingFee,
+    promptpayId: source.promptpayId,
+    promptpayName: source.promptpayName,
+    slipCheck: source.slipCheck,
+    allowReentry: source.allowReentry,
   };
   const queries: BatchItem<"pg">[] = [db.insert(events).values({ ...copy, id, slug, title: `${source.title} (สำเนา)`, status: "draft", featured: false })];
   if (zones.length)
@@ -290,6 +346,21 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
         zones.map((zone) => ({ eventId: id, name: zone.name, note: zone.note, price: zone.price, capacity: zone.capacity, tokens: zone.tokens, position: zone.position })),
       ),
     );
+  for (const item of items) {
+    const itemId = uuidv7();
+    const { name, note, image, price, optionLabel, maxPerOrder, active, position } = item;
+    queries.push(db.insert(merchItems).values({ id: itemId, eventId: id, name, note, image, price, optionLabel, maxPerOrder, active, position }));
+    const own = options.filter((row) => row.itemId === item.id);
+    if (own.length) queries.push(db.insert(merchVariants).values(own.map((row) => ({ itemId, option: row.option, capacity: row.capacity, position: row.position }))));
+  }
+  queries.push(
+    ...(await auditQuery({
+      action: "event.duplicate",
+      target: { type: "event", id, label: `${source.title} (สำเนา)` },
+      eventId: id,
+      details: { copiedFrom: { id: source.id, title: source.title, slug: source.slug }, slug, zones: zones.length, merchItems: items.length },
+    })),
+  );
   await db.batch(queries as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
   updateTag(EVENTS_TAG);
   redirect(`/admin/events/${id}?created=1`);
@@ -297,10 +368,10 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
 
 /** ลบอีเวนต์ for good: the slug typed back confirms it. One with tickets sold is closed instead, not deleted */
 export async function deleteEvent(_: AdminFormState, form: FormData): Promise<AdminFormState> {
-  await requireSuperAdmin("/admin/events");
+  await requirePermission("events.manage", "/admin/events");
   const id = text(form, "eventId");
   const db = getDb();
-  const [target] = await db.select({ slug: events.slug, poster: events.poster, gallery: events.gallery }).from(events).where(eq(events.id, id)).limit(1);
+  const [target] = /^[0-9a-f-]{36}$/i.test(id) ? await db.select().from(events).where(eq(events.id, id)).limit(1) : [];
   if (!target) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
   if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
@@ -309,8 +380,27 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
   const [hasOrders] = await db.select({ id: orders.id }).from(orders).where(eq(orders.eventId, id)).limit(1);
   if (hasOrders) return { error: 'อีเวนต์นี้มีประวัติคำสั่งซื้อแล้ว ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน' };
 
-  await db.delete(events).where(eq(events.id, id));
-  await dropIfUnused([target.poster, ...target.gallery]);
+  const merchPictures = await db.select({ image: merchItems.image }).from(merchItems).where(eq(merchItems.eventId, id));
+  const zones = await db.select({ name: ticketZones.name, price: ticketZones.price, capacity: ticketZones.capacity, tokens: ticketZones.tokens }).from(ticketZones).where(eq(ticketZones.eventId, id));
+  await db.batch([
+    db.delete(events).where(eq(events.id, id)),
+    // The whole event as it was, since nothing else of it is left
+    ...(await auditQuery({
+      action: "event.delete",
+      target: { type: "event", id, label: target.title },
+      eventId: id,
+      details: {
+        slug: target.slug,
+        organizer: target.organizer,
+        venue: target.venue,
+        startsAt: target.startsAt,
+        status: target.status,
+        zones: zones.map((zone) => `${zone.name}: ${zoneSummary(zone)}`),
+        merchItems: merchPictures.length,
+      },
+    })),
+  ]);
+  await dropIfUnused([target.poster, ...target.gallery, ...merchPictures.map((row) => row.image)]);
   updateTag(EVENTS_TAG);
   if (form.get("from") === "edit") redirect("/admin/events");
   refresh();
@@ -323,7 +413,7 @@ export async function deleteEvent(_: AdminFormState, form: FormData): Promise<Ad
  * can't be used to fetch anything else.
  */
 export async function resolveMapLink(link: string): Promise<Pin | null> {
-  await requireSuperAdmin("/admin/events");
+  await requirePermission("events.manage", "/admin/events");
   if (!isShortMapLink(link)) return null;
   let url = link.trim();
   for (let hop = 0; hop < 5; hop++) {

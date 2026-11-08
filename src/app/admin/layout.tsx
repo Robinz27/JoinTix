@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { AdminSkeleton } from "@/components/skeletons";
-import { requireSuperAdmin } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
 
 // หลังบ้าน sits outside app/(site), so it has its own frame (components/admin/admin-shell.tsx) instead of
 // the storefront's navbar and footer.
@@ -21,6 +21,10 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 async function Guarded({ children }: { children: React.ReactNode }) {
   // Pages and actions check again themselves (a layout doesn't re-run on client navigation); this keeps
   // the menu from ever showing to anyone else
-  const { user } = await requireSuperAdmin();
-  return <AdminShell admin={{ name: user.name, email: user.email }}>{children}</AdminShell>;
+  const { user, access } = await requireStaff();
+  return (
+    <AdminShell admin={{ name: user.name, email: user.email }} access={access}>
+      {children}
+    </AdminShell>
+  );
 }

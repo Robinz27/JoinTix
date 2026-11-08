@@ -5,6 +5,8 @@ import {
   ArrowDown01Icon,
   ArrowUp01Icon,
   Calendar03Icon,
+  Coins01Icon,
+  Invoice03Icon,
   Delete02Icon,
   Image01Icon,
   InformationCircleIcon,
@@ -24,11 +26,14 @@ import { Choices, Notice, hint, label } from "@/components/admin/form";
 import { card, iconButton, input, pill, pillPrimary, tile } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import { Hint } from "@/components/ui/hint";
+import { Switch } from "@/components/ui/switch";
 import { PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/event-fields";
 
 // สร้าง / แก้ไขอีเวนต์ (app/admin/events/new, app/admin/events/[id]): every field of an event and its ticket
 // zones in one form, saved together by saveEvent. The form is submitted by hand (onSubmit) rather than
 // through `action`, so a failed save keeps what was typed instead of React resetting the fields.
+// An existing event's tabs each show part of it (`part`); the rest stays in the form, hidden, so saving from
+// either tab still sends the whole event.
 
 export type EventFormZone = { id?: string; name: string; note: string; price: number; capacity: number; sold: number; tokens: number };
 
@@ -51,6 +56,11 @@ export type EventFormValues = {
   status: PublishState;
   featured: boolean;
   maxPerOrder: number;
+  tokenPrice: number;
+  promptpayId: string;
+  promptpayName: string;
+  slipCheck: "api" | "manual";
+  allowReentry: boolean;
   zones: EventFormZone[];
 };
 
@@ -78,9 +88,9 @@ function slugify(title: string) {
     .slice(0, 80);
 }
 
-function Section({ icon, title, subtitle, children }: { icon: IconSvgElement; title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ icon, title, subtitle, off, children }: { icon: IconSvgElement; title: string; subtitle?: string; /** On another tab: kept in the form, not shown */ off?: boolean; children: React.ReactNode }) {
   return (
-    <section className={`${card} min-w-0`}>
+    <section className={`${card} min-w-0 ${off ? "hidden" : ""}`}>
       <header className="flex items-center gap-2.5 border-b border-border px-4 py-3.5 sm:px-5">
         <span className={`${tile} size-9`}>
           <Icon icon={icon} className="size-4.5" />
@@ -107,8 +117,10 @@ function Field({ id, title, note, children }: { id: string; title: string; note?
   );
 }
 
-export function EventForm({ event, posters }: { event?: EventFormValues; posters: string[] }) {
+export function EventForm({ event, posters, part }: { event?: EventFormValues; posters: string[]; /** Which tab this is; a new event shows everything */ part?: "details" | "tickets" }) {
   const [state, action, pending] = useActionState(saveEvent, {});
+  const notDetails = part === "tickets";
+  const notTickets = part === "details";
   const ids = useId();
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(event));
@@ -179,7 +191,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
-          <Section icon={InformationCircleIcon} title="ข้อมูลงาน" subtitle="สิ่งที่คนเห็นในหน้าขายบัตร">
+          <Section off={notDetails} icon={InformationCircleIcon} title="ข้อมูลงาน" subtitle="สิ่งที่คนเห็นในหน้าขายบัตร">
             <Field id={`${ids}-title`} title="ชื่ออีเวนต์">
               <input
                 id={`${ids}-title`}
@@ -231,7 +243,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             </Field>
           </Section>
 
-          <Section icon={Location01Icon} title="แผนที่" subtitle="หมุดสถานที่จัดงาน แสดงในหน้าอีเวนต์">
+          <Section off={notDetails} icon={Location01Icon} title="แผนที่" subtitle="หมุดสถานที่จัดงาน แสดงในหน้าอีเวนต์">
             <MapPinField
               id={`${ids}-map`}
               venue={venue}
@@ -240,7 +252,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             />
           </Section>
 
-          <Section icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">
+          <Section off={notDetails} icon={Calendar03Icon} title="วันและเวลา" subtitle="เวลาประเทศไทย (GMT+7)">
             <div className="grid gap-4 sm:grid-cols-2">
               <DateTimeField id={`${ids}-starts`} name="startsAt" label="เริ่มงาน" defaultValue={toInput(event?.startsAt ?? null)} />
               <DateTimeField id={`${ids}-doors`} name="doorsAt" label="ประตูเปิด" defaultValue={toInput(event?.doorsAt ?? null)} />
@@ -261,7 +273,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
             </div>
           </Section>
 
-          <Section icon={Ticket02Icon} title="โซนบัตร" subtitle={`${zones.length} โซน · ${baht.format(capacity)} ใบ · ขายหมดได้ ฿${baht.format(potential)}`}>
+          <Section off={notTickets} icon={Ticket02Icon} title="โซนบัตร" subtitle={`${zones.length} โซน · ${baht.format(capacity)} ใบ · ขายหมดได้ ฿${baht.format(potential)}`}>
             <ol className="space-y-3">
               {zones.map((zone, i) => (
                 <li key={zone.key} className="rounded-xl border border-border bg-background/40 p-3 sm:p-3.5">
@@ -383,7 +395,7 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
         </div>
 
         <div className="min-w-0 space-y-4 lg:sticky lg:top-5 lg:self-start">
-          <Section icon={Settings02Icon} title="การเผยแพร่">
+          <Section off={notDetails} icon={Settings02Icon} title="การเผยแพร่">
             <fieldset>
               <legend className={label}>สถานะ</legend>
               <Choices name="status" value={event?.status ?? "draft"} options={PUBLISH_STATES.map((value) => ({ value, label: PUBLISH[value].label }))} />
@@ -395,13 +407,10 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 ))}
               </ul>
             </fieldset>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 px-3.5 py-3">
-              <input type="checkbox" name="featured" value="1" defaultChecked={event?.featured} className="mt-0.5 size-4 accent-foreground" />
-              <span>
-                <span className="block text-sm text-foreground">อีเวนต์แนะนำ</span>
-                <span className="block text-2xs text-muted-foreground">แสดงในส่วน “อีเวนต์แนะนำ” หน้าแรก</span>
-              </span>
-            </label>
+            <Switch boxed name="featured" value="1" defaultChecked={event?.featured} label="อีเวนต์แนะนำ" hint="แสดงในส่วน “อีเวนต์แนะนำ” หน้าแรก" className="text-sm text-foreground" />
+          </Section>
+
+          <Section off={notTickets} icon={Coins01Icon} title="การขาย">
             <Field id={`${ids}-max`} title="จำกัดต่อบัญชี (ใบ)" note="กันคนกวาดบัตรไปขายต่อ">
               <input
                 id={`${ids}-max`}
@@ -411,18 +420,53 @@ export function EventForm({ event, posters }: { event?: EventFormValues; posters
                 required
                 min={1}
                 max={20}
-                defaultValue={event?.maxPerOrder ?? 4}
+                defaultValue={event?.maxPerOrder ?? 10}
+                className={`${input} tabular-nums`}
+              />
+            </Field>
+            <Field id={`${ids}-token-price`} title="ราคาโทเคน (บาท ต่อ 1 โทเคน)" note="ใช้ตอนเติมโทเคนหน้างาน และคิดยอดที่ต้องจ่ายให้ร้านค้า">
+              <input
+                id={`${ids}-token-price`}
+                name="tokenPrice"
+                type="number"
+                inputMode="numeric"
+                required
+                min={1}
+                max={100000}
+                defaultValue={event?.tokenPrice ?? 25}
                 className={`${input} tabular-nums`}
               />
             </Field>
           </Section>
 
-          <Section icon={Image01Icon} title="โปสเตอร์" subtitle="แนวตั้ง 4:5 เช่น 800×1000">
+          <Section off={notTickets} icon={Invoice03Icon} title="รับชำระเงิน" subtitle="ลูกค้าสแกน QR พร้อมเพย์แล้วแนบสลิป">
+            <Field id={`${ids}-promptpay`} title="พร้อมเพย์ที่รับเงิน" note="เบอร์มือถือ เลขบัตรประชาชน หรือเลข e-Wallet ของเจ้าของงาน ยังไม่ใส่ = ลูกค้ายังจ่ายเงินไม่ได้">
+              <input id={`${ids}-promptpay`} name="promptpayId" inputMode="numeric" maxLength={20} defaultValue={event?.promptpayId ?? ""} placeholder="0812345678" className={`${input} tabular-nums`} />
+            </Field>
+            <Field id={`${ids}-promptpay-name`} title="ชื่อบัญชี" note="แสดงใต้ QR ให้ลูกค้ามั่นใจว่าโอนถูกคน">
+              <input id={`${ids}-promptpay-name`} name="promptpayName" maxLength={120} defaultValue={event?.promptpayName ?? ""} placeholder="นายสมชาย ใจดี" className={input} />
+            </Field>
+            <fieldset>
+              <legend className={label}>ตรวจสลิป</legend>
+              <Choices
+                name="slipCheck"
+                value={event?.slipCheck ?? "api"}
+                options={[
+                  { value: "api", label: "อัตโนมัติ (Slip2Go)" },
+                  { value: "manual", label: "ทีมงานตรวจเอง" },
+                ]}
+              />
+              <p className={hint}>อัตโนมัติ: ระบบถามธนาคารผ่าน Slip2Go ผ่านแล้วออกบัตรทันที ถ้าตรวจไม่ได้จะส่งไปหน้า “ตรวจสลิป” ให้ทีมงาน · ทีมงานตรวจเอง: ทุกสลิปรอทีมงานกดอนุมัติ</p>
+            </fieldset>
+            <Switch boxed name="allowReentry" value="1" defaultChecked={event?.allowReentry} label="ให้กลับเข้างานซ้ำได้" hint="บัตรที่สแกนเข้างานแล้วสแกนเข้าได้อีก (ออกไปแล้วกลับเข้ามา) ปิดไว้ = สแกนซ้ำจะขึ้นเตือนว่าใช้แล้ว" className="text-sm text-foreground" />
+          </Section>
+
+          <Section off={notDetails} icon={Image01Icon} title="โปสเตอร์" subtitle="แนวตั้ง 4:5 เช่น 800×1000">
             <input type="hidden" name="poster" value={poster} />
             <PosterField id={`${ids}-poster`} poster={poster} onPoster={setPoster} picked={picked} onPick={pick} posters={posters} />
           </Section>
 
-          <Section icon={Image01Icon} title="รูปเพิ่มเติม" subtitle="ผังที่นั่ง เวที สถานที่ ฯลฯ (ไม่บังคับ)">
+          <Section off={notDetails} icon={Image01Icon} title="รูปเพิ่มเติม" subtitle="ผังที่นั่ง เวที สถานที่ ฯลฯ (ไม่บังคับ)">
             <GalleryField items={gallery} onChange={setGallery} />
           </Section>
         </div>

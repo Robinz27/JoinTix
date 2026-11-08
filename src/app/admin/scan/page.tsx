@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/ui";
 import { TicketScanner } from "@/components/admin/ticket-scanner";
 import { doorEvents } from "@/lib/checkins";
-import { requireSuperAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 export const metadata: Metadata = { title: "สแกนบัตร" };
 
 export default async function ScanPage({ searchParams }: PageProps<"/admin/scan">) {
-  await requireSuperAdmin("/admin/scan");
+  await requirePermission("door.scan", "/admin/scan");
   const [events, params] = await Promise.all([doorEvents(), searchParams]);
   // ?event= from the check-in page, else the soonest event still to come
   const asked = typeof params.event === "string" ? params.event : "";

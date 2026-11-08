@@ -9,7 +9,7 @@ import { FadeImage } from "@/components/ui/fade-image";
 import { listAdminEvents } from "@/lib/admin-events";
 import { PUBLISH_STATES, type PublishState } from "@/lib/event-fields";
 import { isRemote } from "@/lib/poster";
-import { requireSuperAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 export const metadata: Metadata = { title: "อีเวนต์" };
 
@@ -18,7 +18,7 @@ const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "sh
 const timeFormat = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 
 export default async function AdminEvents({ searchParams }: PageProps<"/admin/events">) {
-  await requireSuperAdmin("/admin/events");
+  await requirePermission("events.manage", "/admin/events");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.slice(0, 100) : "";
   const filter = PUBLISH_STATES.find((state) => state === params.status);

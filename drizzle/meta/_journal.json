@@ -50,6 +50,55 @@
       "when": 1793877821717,
       "tag": "0006_scan_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793954236554,
+      "tag": "0007_admin_roles_merch_shops",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793971478626,
+      "tag": "0008_merch_general",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793972537115,
+      "tag": "0009_shop_owners",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793972885954,
+      "tag": "0010_order_shipments",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794071748672,
+      "tag": "0011_audit_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794113212956,
+      "tag": "0012_client_requirements",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794119943498,
+      "tag": "0013_cohort_and_defaults",
+      "breakpoints": true
     }
   ]
 }

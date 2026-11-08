@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/db";
-import { events, ticketZones } from "@/db/schema";
+import { events, merchItems, merchVariants, ticketZones } from "@/db/schema";
 import type { EventStatus } from "@/lib/event-fields";
 
 // Events for the storefront, from the events / ticket_zones tables (managed in หลังบ้าน /admin/events).
@@ -40,6 +40,22 @@ export type TicketZone = {
   tokens: number;
 };
 
+/** Merchandise on sale with the tickets, and what's left of each option */
+export type EventMerch = {
+  id: string;
+  name: string;
+  note: string;
+  /** Empty for none */
+  image: string;
+  /** Baht each */
+  price: number;
+  /** What the options are called (ไซส์, สี); empty for an item with no options, which has one with no name */
+  optionLabel: string;
+  /** Most of it in one order; 0 is no limit of its own */
+  maxPerOrder: number;
+  options: { id: string; option: string; remaining: number }[];
+};
+
 export type EventDetail = EventSummary & {
   organizer: string;
   /** ISO date-time the doors open */
@@ -56,6 +72,9 @@ export type EventDetail = EventSummary & {
   /** Most tickets one account may take per order (anti-scalper) */
   maxPerOrder: number;
   zones: TicketZone[];
+  merch: EventMerch[];
+  /** Baht to post the merchandise; 0 is free, null means it's only picked up at the event */
+  shippingFee: number | null;
 };
 
 /** At or under this share of tickets left, an event on sale shows as ใกล้หมด */
@@ -119,6 +138,51 @@ export async function getFeaturedEvents(): Promise<EventSummary[]> {
   return rows.map((row) => summarize(row, zones.get(row.id) ?? []));
 }
 
+/** What the search shows before anything is typed: the next events on the site, soonest first */
+export async function getUpcomingEvents(): Promise<EventSummary[]> {
+  "use cache";
+  cacheTag(EVENTS_TAG);
+  cacheLife("minutes");
+  const rows = await getDb()
+    .select()
+    .from(events)
+    .where(and(eq(events.status, "published"), gte(events.startsAt, sql`now()`)))
+    .orderBy(asc(events.startsAt))
+    .limit(6);
+  const zones = await zonesOf(rows.map((row) => row.id));
+  return rows.map((row) => summarize(row, zones.get(row.id) ?? []));
+}
+
+const SEARCH_LIMIT = 20;
+/** A % or _ typed in the box means itself, not "anything" */
+const contains = (term: string) => `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+
+/**
+ * The navbar's search: every word has to appear somewhere in the event's title, venue, area, organizer or
+ * description (artists are usually named in those), so "คอนเสิร์ต บางนา" narrows as it should. Hits in the title
+ * come first, then what's still to come. Not cached: each search is different, and the status must be fresh.
+ */
+export async function searchEvents(query: string): Promise<EventSummary[]> {
+  const words = query.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  if (words.length === 0) return [];
+  const rows = await getDb()
+    .select()
+    .from(events)
+    .where(
+      and(
+        inArray(events.status, ["published", "closed"]),
+        ...words.map((word) => {
+          const like = contains(word);
+          return or(ilike(events.title, like), ilike(events.venue, like), ilike(events.venueArea, like), ilike(events.organizer, like), ilike(events.description, like));
+        }),
+      ),
+    )
+    .orderBy(sql`${events.title} not ilike ${contains(words.join(" "))}`, sql`${events.startsAt} < now()`, asc(events.startsAt))
+    .limit(SEARCH_LIMIT);
+  const zones = await zonesOf(rows.map((row) => row.id));
+  return rows.map((row) => summarize(row, zones.get(row.id) ?? []));
+}
+
 /** Every slug on the site, for generateStaticParams */
 export async function getEventSlugs(): Promise<string[]> {
   "use cache";
@@ -142,7 +206,22 @@ export async function getEvent(slug: string): Promise<EventDetail | undefined> {
     .where(and(eq(events.slug, slug), inArray(events.status, ["published", "closed"])))
     .limit(1);
   if (!event) return undefined;
-  const zones = (await zonesOf([event.id])).get(event.id) ?? [];
+  const [zoneMap, merchRows] = await Promise.all([
+    zonesOf([event.id]),
+    getDb()
+      .select({ item: merchItems, variant: merchVariants })
+      .from(merchItems)
+      .innerJoin(merchVariants, eq(merchVariants.itemId, merchItems.id))
+      .where(and(eq(merchItems.eventId, event.id), eq(merchItems.active, true)))
+      .orderBy(asc(merchItems.position), asc(merchItems.createdAt), asc(merchVariants.position)),
+  ]);
+  const zones = zoneMap.get(event.id) ?? [];
+  const merch = new Map<string, EventMerch>();
+  for (const { item, variant } of merchRows) {
+    const entry = merch.get(item.id) ?? { id: item.id, name: item.name, note: item.note, image: item.image, price: item.price, optionLabel: item.optionLabel, maxPerOrder: item.maxPerOrder, options: [] };
+    entry.options.push({ id: variant.id, option: variant.option, remaining: variant.capacity - variant.sold });
+    merch.set(item.id, entry);
+  }
   return {
     ...summarize(event, zones),
     organizer: event.organizer,
@@ -157,5 +236,7 @@ export async function getEvent(slug: string): Promise<EventDetail | undefined> {
     images: [event.poster, ...event.gallery],
     maxPerOrder: event.maxPerOrder,
     zones: zones.map((zone) => ({ id: zone.id, name: zone.name, price: zone.price, note: zone.note, remaining: zone.capacity - zone.sold, tokens: zone.tokens })),
+    merch: [...merch.values()],
+    shippingFee: event.shippingFee,
   };
 }

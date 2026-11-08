@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ArrowDown01Icon, Calendar03Icon, Globe02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Calendar03Icon, Globe02Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { tile } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { FadeImage } from "@/components/ui/fade-image";
@@ -9,8 +9,8 @@ import type { DoorEvent } from "@/lib/checkins";
 import { isRemote } from "@/lib/poster";
 
 // Which event this door scans for (components/admin/ticket-scanner.tsx): a list of the events with their
-// posters and dates, in หลังบ้าน's own look rather than the browser's grey drop-down. Arrow keys move,
-// Enter picks, Escape closes.
+// posters and dates, in หลังบ้าน's own look rather than the browser's grey drop-down. Typing narrows it by name or
+// venue, arrow keys move, Enter picks, Escape closes.
 
 // No weekday: Node and the browsers abbreviate Thai weekdays differently (จันทร์ / จ.), which breaks hydration
 const day = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
@@ -25,15 +25,32 @@ function when(iso: string): "today" | "past" | "soon" {
   return key(at) < today ? "past" : "soon";
 }
 
-export function DoorPicker({ events, value, onChange }: { events: DoorEvent[]; value: string | null; onChange: (id: string | null) => void }) {
+export function DoorPicker({
+  events,
+  value,
+  onChange,
+  label = "ประตูนี้สแกนบัตรของงาน",
+  allowAll = true,
+}: {
+  events: DoorEvent[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+  label?: string;
+  /** Offers "ทุกงาน" on top; pages that are always about one event leave it out */
+  allowAll?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [query, setQuery] = useState("");
   const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const ids = useId();
   // "ทุกงาน" first, then each event
-  const options: (DoorEvent | null)[] = [null, ...events];
+  const options: (DoorEvent | null)[] = allowAll ? [null, ...events] : events;
   const chosen = events.find((e) => e.id === value) ?? null;
+  const needle = query.trim().toLowerCase();
+  const shown = needle ? options.filter((o) => (o ? `${o.title} ${o.venue}` : "ทุกงาน").toLowerCase().includes(needle)) : options;
 
   // Closes on a click anywhere else
   useEffect(() => {
@@ -49,20 +66,34 @@ export function DoorPicker({ events, value, onChange }: { events: DoorEvent[]; v
   }, [open, active]);
 
   const show = () => {
+    setQuery("");
     setActive(Math.max(0, options.findIndex((o) => (o?.id ?? null) === value)));
     setOpen(true);
   };
   const pick = (option: DoorEvent | null) => {
     onChange(option?.id ?? null);
     setOpen(false);
+    trigger.current?.focus();
+  };
+  const onSearchKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") setActive((i) => Math.min(shown.length - 1, i + 1));
+    else if (e.key === "ArrowUp") setActive((i) => Math.max(0, i - 1));
+    else if (e.key === "Enter") {
+      if (shown[active] !== undefined) pick(shown[active]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      trigger.current?.focus();
+    } else return;
+    e.preventDefault();
   };
 
   return (
     <div ref={box} className="relative min-w-0 flex-1">
       <p id={`${ids}-label`} className="mb-1.5 text-2xs text-muted-foreground">
-        ประตูนี้สแกนบัตรของงาน
+        {label}
       </p>
       <button
+        ref={trigger}
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -72,13 +103,6 @@ export function DoorPicker({ events, value, onChange }: { events: DoorEvent[]; v
           if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
             e.preventDefault();
             show();
-          } else if (open) {
-            if (e.key === "ArrowDown") setActive((i) => Math.min(options.length - 1, i + 1));
-            else if (e.key === "ArrowUp") setActive((i) => Math.max(0, i - 1));
-            else if (e.key === "Enter") pick(options[active]);
-            else if (e.key === "Escape") setOpen(false);
-            else return;
-            e.preventDefault();
           }
         }}
         className={`flex w-full items-center gap-3 rounded-xl border bg-input px-2.5 py-2 text-left transition-colors hover:border-muted-foreground ${
@@ -96,13 +120,27 @@ export function DoorPicker({ events, value, onChange }: { events: DoorEvent[]; v
       </button>
 
       {open && (
-        <ul
-          ref={list}
-          role="listbox"
-          aria-labelledby={`${ids}-label`}
-          className="dialog-pop absolute inset-x-0 top-full z-30 mt-1.5 max-h-80 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-1.5 shadow-2xl shadow-black/20"
-        >
-          {options.map((option, i) => {
+        <div className="dialog-pop absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/20">
+          <div className="flex items-center gap-2 border-b border-border px-3.5">
+            <Icon icon={Search01Icon} className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              autoFocus
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActive(0);
+              }}
+              onKeyDown={onSearchKey}
+              placeholder="ค้นหาชื่องานหรือสถานที่..."
+              aria-label="ค้นหางาน"
+              autoComplete="off"
+              className="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <ul ref={list} role="listbox" aria-labelledby={`${ids}-label`} className="max-h-72 overflow-y-auto overscroll-contain p-1.5">
+          {shown.length === 0 && <li className="px-2 py-6 text-center text-xs text-muted-foreground">ไม่พบงานที่ตรงกับ “{query.trim()}”</li>}
+          {shown.map((option, i) => {
             const selected = (option?.id ?? null) === value;
             const tag = option ? when(option.startsAt) : null;
             return (
@@ -129,7 +167,8 @@ export function DoorPicker({ events, value, onChange }: { events: DoorEvent[]; v
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </div>
       )}
     </div>
   );

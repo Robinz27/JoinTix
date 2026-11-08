@@ -4,7 +4,14 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins";
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
+import { actorById, audit, roleLabel, type AuditEntry } from "@/lib/audit";
 import { resetPasswordMail, sendMail, verifyEmailCodeMail, verifyEmailLinkMail } from "@/lib/mail";
+
+/** The headers of the request a Better Auth hook runs in, so the log knows the IP and browser */
+type HookContext = { request?: Request; headers?: Headers; path?: string } | null;
+const hookHeaders = (ctx: HookContext) => ctx?.request?.headers ?? ctx?.headers ?? null;
+/** Logged from inside Better Auth, without holding up its answer */
+const auditFromAuth = (entry: AuditEntry) => void audit(entry);
 
 /**
  * Better Auth: email + password accounts with a phone number, sessions in Postgres (src/db/schema.ts).
@@ -12,6 +19,9 @@ import { resetPasswordMail, sendMail, verifyEmailCodeMail, verifyEmailLinkMail }
  * really send the password reset and email verification mails.
  */
 export const auth = betterAuth({
+  // The quick tunnel to the dev server (next.config.ts), so signing out and verifying an email work through it.
+  // Dev only: on a real deployment anyone can get a trycloudflare.com address
+  trustedOrigins: process.env.NODE_ENV === "development" ? ["https://*.trycloudflare.com"] : [],
   database: drizzleAdapter(getDb(), {
     provider: "pg",
     schema,
@@ -27,7 +37,14 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 60 * 60,
     // A reset signs out every other device, in case someone else had the password
     revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }) => {
+    sendResetPassword: async ({ user, url }, request) => {
+      auditFromAuth({
+        action: "auth.password_reset_requested",
+        actor: { id: user.id, name: user.name, email: user.email, role: await roleLabel(user as { role?: string; adminRoleId?: string | null }) },
+        target: { type: "user", id: user.id, label: user.email },
+        subjectUserId: user.id,
+        requestHeaders: request?.headers,
+      });
       // Not awaited: the answer comes back just as fast whether or not the address has an account
       void sendMail({ to: user.email, ...resetPasswordMail(user.name, url) }).catch((error) =>
         console.error("[auth] sending the password reset email failed", error),
@@ -38,7 +55,15 @@ export const auth = betterAuth({
   // back on /profile. Not sent at sign-up, and not needed to sign in; only buying tickets asks for it.
   emailVerification: {
     expiresIn: 60 * 60,
-    sendVerificationEmail: async ({ user, url }) => {
+    sendVerificationEmail: async ({ user, url }, request) => {
+      auditFromAuth({
+        action: "auth.verification_sent",
+        actor: { id: user.id, name: user.name, email: user.email, role: await roleLabel(user as { role?: string; adminRoleId?: string | null }) },
+        target: { type: "user", id: user.id, label: user.email },
+        subjectUserId: user.id,
+        details: { method: "ลิงก์ทางอีเมล" },
+        requestHeaders: request?.headers,
+      });
       void sendMail({ to: user.email, ...verifyEmailLinkMail(user.name, url) }).catch((error) =>
         console.error("[auth] sending the verification link failed", error),
       );
@@ -56,8 +81,74 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       phone: { type: "string", required: true, input: true },
+      // รุ่น for a reunion; optional, so the site still suits an event that isn't one
+      cohort: { type: "string", required: false, defaultValue: "", input: true },
       // input: false, so nobody can sign up as an admin; only a super admin changes it (app/admin/users)
       role: { type: "string", required: false, defaultValue: "user", input: false },
+      // Staff's role (admin_roles): here only so the navbar knows to link to หลังบ้าน. What it allows is read
+      // fresh on each request (getAdminAccess in lib/session.ts)
+      adminRoleId: { type: "string", required: false, input: false },
+    },
+  },
+  // ประวัติการใช้งาน (lib/audit.ts): signing up, signing in and out, and verifying an email, as Better Auth does them,
+  // whichever page or route asked. A failed login and the password reset are logged in app/actions/auth.ts
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user, ctx) =>
+          auditFromAuth({
+            action: "auth.signup",
+            actor: { id: user.id, name: user.name, email: user.email, role: "ลูกค้า" },
+            target: { type: "user", id: user.id, label: user.email },
+            subjectUserId: user.id,
+            details: { name: user.name, email: user.email, phone: (user as { phone?: string }).phone },
+            requestHeaders: hookHeaders(ctx),
+          }),
+      },
+      update: {
+        // Better Auth only updates an account itself here to verify its email (the profile can't be edited yet)
+        after: async (user, ctx) => {
+          if (ctx?.path !== "/verify-email" && ctx?.path !== "/email-otp/verify-email") return;
+          auditFromAuth({
+            action: "auth.email_verified",
+            actor: await actorById(user.id),
+            target: { type: "user", id: user.id, label: user.email },
+            subjectUserId: user.id,
+            changes: [{ field: "emailVerified", label: "ยืนยันอีเมลแล้ว", from: false, to: true }],
+            details: { method: ctx.path === "/verify-email" ? "ลิงก์ทางอีเมล" : "รหัส 6 หลัก" },
+            requestHeaders: hookHeaders(ctx),
+          });
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session, ctx) => {
+          // Signing up signs in too; that one is the sign-up's row
+          if (ctx?.path !== "/sign-in/email") return;
+          auditFromAuth({
+            action: "auth.login",
+            actor: await actorById(session.userId),
+            target: { type: "user", id: session.userId },
+            subjectUserId: session.userId,
+            details: { rememberMe: (ctx.body as { rememberMe?: boolean } | undefined)?.rememberMe ?? true, sessionExpiresAt: session.expiresAt },
+            requestHeaders: hookHeaders(ctx),
+          });
+        },
+      },
+      delete: {
+        after: async (session, ctx) => {
+          if (ctx?.path !== "/sign-out") return;
+          auditFromAuth({
+            action: "auth.logout",
+            actor: await actorById(session.userId),
+            target: { type: "user", id: session.userId },
+            subjectUserId: session.userId,
+            details: { signedInAt: session.createdAt },
+            requestHeaders: hookHeaders(ctx),
+          });
+        },
+      },
     },
   },
   session: {
@@ -74,6 +165,8 @@ export const auth = betterAuth({
       disableSignUp: true,
       sendVerificationOTP: async ({ email, otp, type }) => {
         if (type !== "email-verification") return;
+        // The code itself is never logged
+        auditFromAuth({ action: "auth.verification_sent", target: { type: "user", label: email }, details: { method: "รหัส 6 หลัก", email } });
         void sendMail({ to: email, ...verifyEmailCodeMail(otp) }).catch((error) =>
           console.error("[auth] sending the verification code failed", error),
         );

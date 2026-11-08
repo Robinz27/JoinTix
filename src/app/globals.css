@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /*
-  Theme ported from next.js-shop: monochrome, light by default (the inline script in app/layout.tsx).
+  Theme ported from next.js-shop: monochrome, light by default (the inline script in app/layout.tsx). A mint, Dime-like
+  accent was tried on 2026-11-08 and taken back out.
   Arial resized to Google Sans Flex's metrics so text doesn't shift when the web font swaps in.
 */
 @font-face {
@@ -520,6 +521,42 @@ dialog.search-dialog::backdrop {
   }
 }
 
+/*
+  The instant a camera reads a QR (ScanFlash in components/admin/qr-reader.tsx). It plays over the picture and
+  never holds anything up: the ticket is already being looked up underneath it.
+*/
+.scan-flash {
+  opacity: 0;
+  animation: scan-flash 0.5s ease-out;
+}
+.scan-flash-badge {
+  animation: scan-flash-badge 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+@keyframes scan-flash {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes scan-flash-badge {
+  from {
+    transform: scale(0.5);
+  }
+  45%,
+  to {
+    transform: scale(1);
+  }
+}
+/* The flash itself stays, since it's how staff know the scan worked; only the pop goes */
+@media (prefers-reduced-motion: reduce) {
+  .scan-flash-badge {
+    animation: none;
+  }
+}
+
 /* Number fields without the browser's up/down spinner (price, ticket counts); typing is enough */
 input[type="number"] {
   -moz-appearance: textfield;
@@ -540,4 +577,24 @@ input[type="number"]::-webkit-outer-spin-button {
   --share-x: #000000;
   --share-telegram: #229ed9;
   --share-whatsapp: #25d366;
+}
+
+/*
+  Big screens: everything is sized in rem, so raising the root size scales the whole site, text and page widths
+  alike, instead of leaving a small column in the middle of a wall of empty space. Breakpoints don't move with it.
+*/
+@media (min-width: 1920px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+@media (min-width: 2560px) {
+  html {
+    font-size: 131.25%;
+  }
+}
+@media (min-width: 3840px) {
+  html {
+    font-size: 187.5%;
+  }
 }

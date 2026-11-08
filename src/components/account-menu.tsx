@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown01Icon, Logout03Icon, ShieldUserIcon, Ticket01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Logout03Icon, ShieldUserIcon, Store01Icon, Ticket01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { authClient } from "@/lib/auth-client";
 
-export type Account = { name: string; email: string; role?: string | null };
+export type Account = { name: string; email: string; role?: string | null; adminRoleId?: string | null };
 
 const LINKS = [
   { href: "/tickets", label: "บัตรของฉัน", icon: Ticket01Icon },
@@ -15,9 +15,25 @@ const LINKS = [
 ];
 const ADMIN_LINK = { href: "/admin", label: "หลังบ้าน", icon: ShieldUserIcon };
 
-/** The menu's links, with หลังบ้าน for a super admin (only a shortcut: /admin checks the role itself) */
-function linksFor(account?: Account | null) {
-  return account?.role === "super_admin" ? [...LINKS, ADMIN_LINK] : LINKS;
+const SHOP_LINK = { href: "/shop", label: "ร้านของฉัน", icon: Store01Icon };
+
+/** The menu's links, with ร้านของฉัน for a shop's people and หลังบ้าน for staff (only shortcuts: both pages check for themselves) */
+function useLinks(account?: Account | null) {
+  const [hasShop, setHasShop] = useState(false);
+  const signedIn = Boolean(account);
+  // Being in a shop isn't part of the session, so it's asked for once the menu is there
+  useEffect(() => {
+    if (!signedIn) return;
+    let live = true;
+    fetch("/api/shop/mine")
+      .then((res) => (res.ok ? res.json() : { hasShop: false }))
+      .then((data) => live && setHasShop(Boolean(data.hasShop)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [signedIn]);
+  return [...LINKS, ...(hasShop ? [SHOP_LINK] : []), ...(account?.role === "super_admin" || account?.adminRoleId ? [ADMIN_LINK] : [])];
 }
 
 /** Signs out through Better Auth's client, so the navbar's session updates at once, then reloads the page data */
@@ -47,6 +63,7 @@ export function AccountDropdown({ account }: { account: Account }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const signOut = useSignOut();
+  const links = useLinks(account);
 
   // Closes on a click outside or Escape
   useEffect(() => {
@@ -79,7 +96,7 @@ export function AccountDropdown({ account }: { account: Account }) {
         <div role="menu" className="dropdown-pop absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl shadow-black/10 dark:shadow-black/40">
           <AccountSummary account={account} />
           <div className="my-1 h-px bg-border" />
-          {linksFor(account).map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -125,10 +142,11 @@ export function AccountSummary({ account }: { account: Account }) {
 
 /** The same links as rows, for the phone menu */
 export function AccountRows({ account, onNavigate }: { account?: Account | null; onNavigate: () => void }) {
+  const links = useLinks(account);
   const signOut = useSignOut();
   return (
     <>
-      {linksFor(account).map((link) => (
+      {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}

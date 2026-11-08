@@ -16,7 +16,7 @@ import { getFeaturedEvents } from "@/lib/events";
 
 const WELCOME = "ยินดีต้อนรับสู่";
 const SITE_NAME = "JoinTix";
-const DESCRIPTION = "กดบัตรคอนเสิร์ต อีเวนต์ และงานเลี้ยงรุ่น ไว ไม่มีซ้ำ ล็อกที่นั่งให้คุณทันทีที่กด";
+const DESCRIPTION = "ลงทะเบียนงานเลี้ยงรุ่น ซื้อบัตรและเสื้อรุ่น รับ QR เข้างานทางอีเมล ใช้โทเคนแทนเงินสดทั้งงาน";
 /** After the status pill above it (the .stagger entrance: 80ms + 55ms) */
 const HERO_START = 0.135;
 // The welcome block's timeline: heading letters, then the description's words, then the buttons

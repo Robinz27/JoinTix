@@ -21,8 +21,18 @@ const BOXES = {
   posters: { width: 1200, height: 1500, quality: 85 },
   // More pictures of an event (stage, venue, seating plan): any shape, opened full size in the lightbox
   gallery: { width: 1600, height: 1600, quality: 85 },
+  // Merchandise pictures: a small square on the event page
+  merch: { width: 800, height: 800, quality: 85 },
+  // Transfer slips (checkout, the top-up desk): tall phone screenshots, readable when zoomed. Private, see below
+  slips: { width: 1200, height: 2400, quality: 80 },
 } as const;
 export type UploadFolder = keyof typeof BOXES;
+
+/**
+ * Folders the public /uploads route never serves: a slip shows someone's name and bank. They're read through
+ * readPrivateUpload() by a route that checks who is asking (app/admin/slips/[...path]).
+ */
+const PRIVATE: ReadonlySet<string> = new Set<UploadFolder>(["slips"]);
 
 export type SaveImageResult = { ok: true; path: string } | { ok: false; error: string };
 
@@ -80,9 +90,16 @@ export async function deleteUploadedImage(publicPath: string): Promise<void> {
   await unlink(path.join(uploadRoot(), ...segments)).catch(() => {});
 }
 
-/** An uploaded picture's bytes for the /uploads route, or null for anything that isn't one */
+/** An uploaded picture's bytes for the /uploads route, or null for anything that isn't one (or is private) */
 export async function readUpload(segments: string[]): Promise<Buffer | null> {
-  if (!validSegments(segments)) return null;
+  if (!validSegments(segments) || PRIVATE.has(segments[1])) return null;
+  return readFile(path.join(uploadRoot(), ...segments)).catch(() => null);
+}
+
+/** A private picture (a slip) by its stored path, for a route that has already checked who may see it */
+export async function readPrivateUpload(publicPath: string): Promise<Buffer | null> {
+  const segments = segmentsOf(publicPath);
+  if (!segments || !PRIVATE.has(segments[1])) return null;
   return readFile(path.join(uploadRoot(), ...segments)).catch(() => null);
 }
 

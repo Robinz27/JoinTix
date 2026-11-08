@@ -1,8 +1,9 @@
 "use client";
 
 import { useId, useState, useSyncExternalStore } from "react";
-import { Alert02Icon, CheckmarkCircle02Icon, Loading03Icon, Tick02Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, CheckmarkCircle02Icon, Loading03Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { Icon, type IconSvgElement } from "@/components/icon";
+import { CheckBox } from "@/components/ui/switch";
 import { Watermark } from "@/components/watermark";
 
 // Form pieces shared by the login and sign-up pages, from next.js-shop's components/auth/auth-ui.tsx
@@ -83,10 +84,7 @@ export function PasswordInput(props: Omit<React.InputHTMLAttributes<HTMLInputEle
 export function Checkbox({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="group flex cursor-pointer items-center gap-2.5 select-none">
-      <input type="checkbox" {...props} className="peer sr-only" />
-      <span className="grid size-[18px] place-items-center rounded-[5px] border-2 border-border text-transparent transition-all group-hover:border-muted-foreground group-active:scale-90 peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:ring-3 peer-focus-visible:ring-muted-foreground/30">
-        <Icon icon={Tick02Icon} className="size-3.5" strokeWidth={2.5} />
-      </span>
+      <CheckBox {...props} />
       <span className="text-sm text-muted-foreground transition-colors peer-checked:text-foreground">{label}</span>
     </label>
   );

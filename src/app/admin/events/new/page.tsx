@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { EventForm } from "@/components/admin/event-form";
 import { BackLink, PageHeader } from "@/components/admin/ui";
 import { listPosters } from "@/lib/admin-events";
-import { requireSuperAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 
 export const metadata: Metadata = { title: "สร้างอีเวนต์" };
 
 export default async function NewEvent() {
-  await requireSuperAdmin("/admin/events/new");
+  await requirePermission("events.manage", "/admin/events/new");
   const posters = await listPosters();
   return (
     <>
