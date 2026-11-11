@@ -11,6 +11,7 @@ import { Icon } from "@/components/icon";
 import { Hint } from "@/components/ui/hint";
 import { Select } from "@/components/ui/select";
 import type { Customer, SaleEntry, TillShop } from "@/lib/shops";
+import { num } from "@/lib/format";
 
 // ขายที่ร้าน: tap what the customer wants, scan their ticket, check the name, take the tokens. The server prices
 // the bill from the menu itself and refuses it whole if the tokens aren't there. A wrong sale can be voided,
@@ -19,7 +20,6 @@ import type { Customer, SaleEntry, TillShop } from "@/lib/shops";
 // A shop that sells one thing (the client's usual case: a popcorn stand, a drinks stall) skips the tapping and the
 // confirming: every scan takes that item's tokens straight away, ready for the next customer.
 
-const num = new Intl.NumberFormat("th-TH");
 const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const SHOP_KEY = "jointix-till-shop";
 

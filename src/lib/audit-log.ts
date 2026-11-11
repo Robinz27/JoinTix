@@ -2,6 +2,7 @@ import { and, count, desc, eq, gte, ilike, isNull, like, lt, notInArray, or, sql
 import { getDb } from "@/db";
 import { auditLogs, events } from "@/db/schema";
 import { AUDIT_GROUPS, LOG_RANGES, ROUTINE_ACTIONS, isAuditAction, type AuditChange, type LogFilters } from "@/lib/audit-actions";
+import { isUuid } from "@/lib/uuid";
 
 export { isFiltered, logQuery, type LogFilters } from "@/lib/audit-actions";
 
@@ -30,7 +31,6 @@ export type LogRow = {
   userAgent: string | null;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /** The filters as they came in the URL, with anything malformed dropped */
@@ -46,7 +46,7 @@ export function readFilters(params: Record<string, string | string[] | undefined
     actor: /^[\w-]{1,64}$/.test(one("actor")) ? one("actor") : undefined,
     user: /^[\w-]{1,64}$/.test(one("user")) ? one("user") : undefined,
     action: group || isAuditAction(action) ? action : undefined,
-    eventId: UUID.test(one("event")) ? one("event") : undefined,
+    eventId: isUuid(one("event")) ? one("event") : undefined,
     range: LOG_RANGES.find((r) => r.value === one("range"))?.value,
     from: STAMP.test(one("from")) ? one("from") : undefined,
     to: STAMP.test(one("to")) ? one("to") : undefined,

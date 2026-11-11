@@ -4,11 +4,11 @@ import { useId } from "react";
 import { DeliveryTruck01Icon, Store01Icon } from "@hugeicons/core-free-icons";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import type { ShippingAddress } from "@/lib/event-fields";
+import { num } from "@/lib/format";
 
 // How the merchandise reaches the buyer, in the ticket panel: picked up at the event, or posted to the address typed
 // here. Only shown for an event that posts (events.shipping_fee) once something is picked.
 
-const baht = new Intl.NumberFormat("th-TH");
 const field = "h-10 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-muted-foreground";
 
 export function DeliveryPicker({
@@ -39,7 +39,7 @@ export function DeliveryPicker({
       <legend className="mb-2 text-sm font-medium text-foreground">รับสินค้าแบบไหน</legend>
       <div className="grid grid-cols-2 gap-2">
         <Choice name={ids} icon={Store01Icon} title="รับที่งาน" note="ฟรี" checked={!posting} onChange={() => onPosting(false)} />
-        <Choice name={ids} icon={DeliveryTruck01Icon} title="จัดส่ง" note={fee === 0 ? "ส่งฟรี" : `฿${baht.format(fee)}`} checked={posting} onChange={() => onPosting(true)} />
+        <Choice name={ids} icon={DeliveryTruck01Icon} title="จัดส่ง" note={fee === 0 ? "ส่งฟรี" : `฿${num.format(fee)}`} checked={posting} onChange={() => onPosting(true)} />
       </div>
       {posting && (
         <div className="space-y-3">

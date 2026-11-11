@@ -4,11 +4,12 @@ import { and, eq, ne } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { getDb } from "@/db";
 import { adminRoles, user } from "@/db/schema";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { auditQuery, changesOf } from "@/lib/audit";
 import { PERMISSIONS, PERMISSION_KEYS } from "@/lib/permissions";
 import { requireSuperAdmin } from "@/lib/session";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
+import { formText } from "@/lib/form";
 
 // สิทธิ์ทีมงาน (app/admin/roles): roles are made, changed and removed freely, by a super admin only.
 
@@ -16,14 +17,13 @@ import { uuidv7 } from "@/lib/uuid";
 const named = (keys: string[]) => keys.map((key) => PERMISSIONS.find((p) => p.key === key)?.label ?? key).sort();
 const LABELS = { name: "ชื่อโรล", description: "คำอธิบาย", permissions: "สิทธิ์" };
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 /** สร้าง / แก้ไขโรล: with `roleId` it changes that role, and everyone who has it gets the new rights at once */
 export async function saveRole(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   await requireSuperAdmin("/admin/roles");
-  const id = text(form, "roleId");
-  const name = text(form, "name");
-  const description = text(form, "description");
+  const id = formText(form, "roleId");
+  const name = formText(form, "name");
+  const description = formText(form, "description");
   const permissions = form.getAll("permissions").map(String);
 
   if (!name || name.length > 60) return { error: "กรอกชื่อโรล (ไม่เกิน 60 ตัวอักษร)" };
@@ -62,9 +62,9 @@ export async function saveRole(_: AdminFormState, form: FormData): Promise<Admin
 /** ลบโรล: whoever had it goes back to being a customer (ON DELETE SET NULL) */
 export async function deleteRole(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   await requireSuperAdmin("/admin/roles");
-  const id = text(form, "roleId");
+  const id = formText(form, "roleId");
   const db = getDb();
-  const [role] = /^[0-9a-f-]{36}$/i.test(id) ? await db.select().from(adminRoles).where(eq(adminRoles.id, id)).limit(1) : [];
+  const [role] = isUuid(id) ? await db.select().from(adminRoles).where(eq(adminRoles.id, id)).limit(1) : [];
   if (!role) return { error: "ไม่พบโรลนี้ อาจถูกลบไปแล้ว" };
   const holders = await db.select({ id: user.id, email: user.email }).from(user).where(eq(user.adminRoleId, id));
   await db.batch([

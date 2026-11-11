@@ -7,21 +7,17 @@ import { Badge, Empty, card, pill } from "@/components/admin/ui";
 import { memberOrders } from "@/lib/admin-members";
 import { addressLine, merchLabel } from "@/lib/event-fields";
 import { requirePermission } from "@/lib/session";
+import { bahtOrFree, num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "คำสั่งซื้อของสมาชิก" };
 
-const num = new Intl.NumberFormat("th-TH");
-const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${num.format(n)}`);
 const stamp = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const at = (iso: string) => stamp.format(new Date(iso));
 
 const STATES = [
   { value: "", label: "ทั้งหมด" },
-  { value: "paid", label: "ชำระแล้ว" },
-  { value: "pending", label: "รอชำระ" },
-  { value: "cancelled", label: "ยกเลิก" },
-  { value: "expired", label: "หมดเวลา" },
-] as const;
+  ...(["paid", "pending", "cancelled", "expired"] as const).map((value) => ({ value, label: ORDER_STATUS[value].label })),
+];
 
 /** Every order of the member: what, how much, when, each ticket and whether it went in, the merchandise and where it went */
 export default async function MemberOrdersPage({ params, searchParams }: PageProps<"/admin/users/[id]/orders">) {
@@ -83,11 +79,11 @@ export default async function MemberOrdersPage({ params, searchParams }: PagePro
                 </div>
                 <div>
                   <dt className="text-2xs text-muted-foreground">ราคาต่อใบ</dt>
-                  <dd className="text-foreground tabular-nums">{baht(order.unitPrice)}</dd>
+                  <dd className="text-foreground tabular-nums">{bahtOrFree(order.unitPrice)}</dd>
                 </div>
                 <div>
                   <dt className="text-2xs text-muted-foreground">ยอดรวม</dt>
-                  <dd className="font-semibold text-foreground tabular-nums">{baht(order.total)}</dd>
+                  <dd className="font-semibold text-foreground tabular-nums">{bahtOrFree(order.total)}</dd>
                 </div>
                 <div>
                   <dt className="text-2xs text-muted-foreground">{order.status === "paid" ? "โทเคนที่ได้" : "โทเคน"}</dt>
@@ -134,7 +130,7 @@ export default async function MemberOrdersPage({ params, searchParams }: PagePro
                           {merchLabel(item)} × {item.quantity}
                         </span>
                         <span className="text-2xs text-muted-foreground tabular-nums">
-                          {baht(item.unitPrice * item.quantity)}
+                          {bahtOrFree(item.unitPrice * item.quantity)}
                           {order.status === "paid" && !order.shipment && (item.pickedUpAt ? ` · รับแล้ว ${at(item.pickedUpAt)}` : " · ยังไม่รับ")}
                         </span>
                       </li>
@@ -147,7 +143,7 @@ export default async function MemberOrdersPage({ params, searchParams }: PagePro
                 <div className="border-t border-border px-4 py-3 text-sm sm:px-5">
                   <p className="mb-1 flex items-center gap-1 text-2xs text-muted-foreground">
                     <InlineIcon icon={DeliveryTruck01Icon} />
-                    จัดส่ง · ค่าส่ง {baht(order.shipment.fee)}
+                    จัดส่ง · ค่าส่ง {bahtOrFree(order.shipment.fee)}
                   </p>
                   <p className="break-words text-foreground">
                     {order.shipment.name} · <span className="tabular-nums">{order.shipment.phone}</span>

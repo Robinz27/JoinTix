@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight01Icon, ComputerIcon, SmartPhone01Icon, WorkHistoryIcon } from "@hugeicons/core-free-icons";
 import { DayLabel, TimeAgo } from "@/components/admin/relative-time";
+import { dayKey, fullDateTime as full } from "@/lib/format";
 import { Empty } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { AUDIT_ACTIONS, DETAIL_LABELS, deviceLabel, ipLabel, isAuditAction, isFiltered, logQuery, showValue, targetHref, type AuditChange, type LogFilters } from "@/lib/audit-actions";
@@ -11,9 +12,6 @@ import type { LogRow } from "@/lib/audit-log";
 // Opening it shows what changed, before → after, in plain words. The technical part (ids, the browser's full
 // string) is for a super admin only. A plain <details>, so it needs no JavaScript.
 
-const TZ = "Asia/Bangkok";
-const dayKey = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: TZ });
-const full = new Intl.DateTimeFormat("th-TH", { dateStyle: "long", timeStyle: "medium", timeZone: TZ });
 
 const DOT = { muted: "bg-muted-foreground/40", good: "bg-emerald-500", warn: "bg-amber-500", danger: "bg-red-500" } as const;
 

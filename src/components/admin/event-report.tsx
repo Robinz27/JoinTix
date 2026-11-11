@@ -3,11 +3,10 @@ import { Empty, Panel, SectionTitle, StatCard, card, pill, td, tdMain, th } from
 import { Icon } from "@/components/icon";
 import { merchLabel } from "@/lib/event-fields";
 import { eventReport } from "@/lib/reports";
+import { baht, num } from "@/lib/format";
 
 // One event's รายงาน: on /admin/reports with its event picker, and on the event's own รายงาน tab
 
-const num = new Intl.NumberFormat("th-TH");
-const baht = (n: number) => `฿${num.format(n)}`;
 const right = "text-right!";
 
 const DOWNLOADS = [

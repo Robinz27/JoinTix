@@ -6,6 +6,7 @@ import { events, orderItems, orderShipments, orders, outbox, ticketZones, ticket
 import { audit } from "@/lib/audit";
 import { button, escape, layout, sendMail } from "@/lib/mail";
 import { mapsLink } from "@/lib/map";
+import { bahtOrFree } from "@/lib/format";
 
 // The outbox (HANDOFF section 7): work that follows a payment but mustn't slow it down or fail it, done
 // after the response (after() in app/actions/orders.ts) and again on the next pass if it failed. Jobs:
@@ -16,7 +17,6 @@ const MAX_ATTEMPTS = 5;
 
 const dateFormat = new Intl.DateTimeFormat("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Bangkok" });
 const timeFormat = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
-const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${n.toLocaleString("th-TH")}`);
 
 /** Runs what's waiting, oldest first; a job another pass already took is skipped */
 export async function processOutbox(limit = 10) {
@@ -84,17 +84,17 @@ async function sendTicketEmail(orderId: string) {
     ...(zone
       ? ([
           ["ประเภทบัตร", `${zone.name}${zone.note ? ` (${zone.note})` : ""}`],
-          ["จำนวน", `${order.quantity} ใบ × ${baht(order.unitPrice)}`],
+          ["จำนวน", `${order.quantity} ใบ × ${bahtOrFree(order.unitPrice)}`],
         ] as [string, string][])
       : ([["บัตร", "ไม่ได้ซื้อบัตร (สินค้าอย่างเดียว)"]] as [string, string][])),
-    ...merch.map((s): [string, string] => [merchLabel(s), `${s.quantity} ชิ้น × ${baht(s.unitPrice)}${shipment ? "" : " (รับที่หน้างาน)"}`]),
+    ...merch.map((s): [string, string] => [merchLabel(s), `${s.quantity} ชิ้น × ${bahtOrFree(s.unitPrice)}${shipment ? "" : " (รับที่หน้างาน)"}`]),
     ...(shipment
       ? ([
-          ["ค่าจัดส่ง", baht(shipment.fee)],
+          ["ค่าจัดส่ง", bahtOrFree(shipment.fee)],
           ["จัดส่งถึง", `${shipment.name} · ${shipment.phone} · ${addressLine(shipment)}`],
         ] as [string, string][])
       : []),
-    ["ยอดชำระ", baht(order.total)],
+    ["ยอดชำระ", bahtOrFree(order.total)],
     ...(order.tokens > 0 && order.quantity > 0
       ? ([["โทเคนที่ได้รับ", `ใบละ ${(order.tokens / order.quantity).toLocaleString("th-TH")} โทเคน (ใช้แลกสินค้าภายในงานด้วย QR ของบัตรใบนั้น)`]] as [string, string][])
       : []),

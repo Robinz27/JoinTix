@@ -6,7 +6,7 @@ import { auditLogs, events, merchItems, merchVariants, orderItems, orderShipment
 import { audit, auditQuery, auditRow, SYSTEM_ACTOR } from "@/lib/audit";
 import { saleStatus } from "@/lib/events";
 import { addressProblem, attendeesProblem, isBuyable, type Attendee, type ShippingAddress } from "@/lib/event-fields";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
 
 // Buying tickets (and merchandise, with or without tickets): an order holds what it takes for HOLD_MINUTES while
 // the buyer says who each ticket is for and sends a transfer slip (lib/payments.ts). A slip sent in stops the
@@ -320,7 +320,7 @@ type OrderRow = { order: typeof orders.$inferSelect; event: typeof events.$infer
 
 /** An order of this account, with what the checkout and tickets pages show about it */
 export async function getOrder(orderId: string, userId: string): Promise<OrderView | null> {
-  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return null;
+  if (!isUuid(orderId)) return null;
   await releaseExpired();
   const [row] = await getDb()
     .select({ order: orders, event: events, zone: ticketZones })
@@ -365,7 +365,7 @@ function orderView({ order, event, zone }: OrderRow, merch: OrderMerch[] = [], s
 
 /** ข้อมูลผู้เข้างาน: who each ticket of a pending order is for. Saved before the slip, copied onto the tickets when paid */
 export async function saveAttendees(orderId: string, userId: string, list: Attendee[]): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
+  if (!isUuid(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
   const db = getDb();
   await releaseExpired();
   const [order] = await db.select({ quantity: orders.quantity, status: orders.status }).from(orders).where(and(eq(orders.id, orderId), eq(orders.userId, userId))).limit(1);
@@ -478,7 +478,7 @@ export async function issueOrder(orderId: string, via: { by: "api" | "admin"; pa
 
 /** ยกเลิก: a pending order lets its tickets go at once instead of waiting out the hold */
 export async function cancelOrder(orderId: string, userId: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return;
+  if (!isUuid(orderId)) return;
   await releaseOrder(orderId, sql`${orders.userId} = ${userId} and ${orders.status} = 'pending'`, "order.cancel", "ยกเลิกก่อนชำระ บัตรและสินค้าคืนเข้าระบบทันที");
 }
 

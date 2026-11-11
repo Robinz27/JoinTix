@@ -6,10 +6,10 @@ import { BackLink, PageHeader, Panel } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { requirePermission } from "@/lib/session";
 import { getShop, listShops } from "@/lib/shops";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ร้านค้า" };
 
-const num = new Intl.NumberFormat("th-TH");
 
 export default async function ShopPage({ params }: PageProps<"/admin/shops/[id]">) {
   const { id } = await params;

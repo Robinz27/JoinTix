@@ -3,10 +3,10 @@ import { ArrowRight01Icon, Coins01Icon, Money03Icon, Store01Icon } from "@hugeic
 import { Badge, Empty, MiniStat, card, td, tdMain, th } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { listShops } from "@/lib/shops";
+import { num } from "@/lib/format";
 
 // One event's ร้านค้า: on /admin/shops with its event picker, and on the event's own ร้านค้า tab
 
-const num = new Intl.NumberFormat("th-TH");
 
 export async function EventShops({ eventId }: { eventId: string }) {
   const shops = await listShops(eventId);

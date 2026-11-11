@@ -10,10 +10,10 @@ import { Icon } from "@/components/icon";
 import { Switch } from "@/components/ui/switch";
 import { Hint } from "@/components/ui/hint";
 import type { ShopDetail, ShopMenuItem, ShopRole } from "@/lib/shops";
+import { num } from "@/lib/format";
 
 // The forms of ร้านค้า (app/admin/shops): add a shop, and on its page change it, its menu and its staff.
 
-const num = new Intl.NumberFormat("th-TH");
 
 function Submit({ pending, children }: { pending: boolean; children: React.ReactNode }) {
   return (

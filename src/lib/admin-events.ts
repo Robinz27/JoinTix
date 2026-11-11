@@ -8,6 +8,7 @@ import type { DoorEvent } from "@/lib/checkins";
 import { saleStatus } from "@/lib/events";
 import type { EventStatus, PublishState } from "@/lib/event-fields";
 import { deleteUploadedImage, isUploadPath } from "@/lib/uploads";
+import { isUuid } from "@/lib/uuid";
 
 // What หลังบ้าน reads about events: every row whatever its status, fresh each request (never the
 // storefront's cache in lib/events.ts). Server only.
@@ -52,7 +53,6 @@ export type AdminEvent = {
   revenue: number;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function shape(event: typeof events.$inferSelect, zoneRows: (typeof ticketZones.$inferSelect)[]): AdminEvent {
   const zones = zoneRows.map(({ id, name, note, price, capacity, sold, tokens }) => ({ id, name, note, price, capacity, sold, tokens }));
@@ -97,7 +97,7 @@ export async function listAdminEvents(q = ""): Promise<AdminEvent[]> {
 
 /** One event for its edit page; anything that isn't an existing id is undefined */
 export const getAdminEvent = cache(async (id: string): Promise<AdminEvent | undefined> => {
-  if (!UUID.test(id)) return undefined;
+  if (!isUuid(id)) return undefined;
   const db = getDb();
   const [[row], zones] = await Promise.all([
     db.select().from(events).where(eq(events.id, id)).limit(1),

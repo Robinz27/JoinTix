@@ -9,10 +9,10 @@ import { getDb } from "@/db";
 import { adminRoles, user } from "@/db/schema";
 import { PERMISSIONS } from "@/lib/permissions";
 import { requireSuperAdmin } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "สิทธิ์ทีมงาน" };
 
-const num = new Intl.NumberFormat("th-TH");
 
 export default async function AdminRoles() {
   await requireSuperAdmin("/admin/roles");

@@ -12,15 +12,15 @@ import { authClient } from "@/lib/auth-client";
 import { EMPTY_ADDRESS, addressProblem, isBuyable, merchLabel, type EventStatus, type ShippingAddress } from "@/lib/event-fields";
 import type { EventMerch, TicketZone } from "@/lib/events";
 import { isRemote } from "@/lib/poster";
+import { num } from "@/lib/format";
 
-const baht = new Intl.NumberFormat("th-TH");
 /** At or under this many left, the zone says how many */
 const FEW_LEFT = 20;
 /** All merchandise together in one order (lib/orders.ts) */
 const MAX_MERCH = 20;
 
 function price(value: number) {
-  return value === 0 ? "ฟรี" : `฿${baht.format(value)}`;
+  return value === 0 ? "ฟรี" : `฿${num.format(value)}`;
 }
 
 /**
@@ -131,7 +131,7 @@ export function TicketPanel({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-foreground">{z.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">{z.note}</span>
-                {z.tokens > 0 && <span className="mt-0.5 block text-2xs font-medium text-amber-600 dark:text-amber-400">+{baht.format(z.tokens)} โทเคน / ใบ</span>}
+                {z.tokens > 0 && <span className="mt-0.5 block text-2xs font-medium text-amber-600 dark:text-amber-400">+{num.format(z.tokens)} โทเคน / ใบ</span>}
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-sm font-medium text-foreground">{price(z.price)}</span>
@@ -208,8 +208,8 @@ export function TicketPanel({
             )}
             {zone && zone.tokens > 0 && tickets > 0 && (
               <div className="flex justify-between text-amber-600 dark:text-amber-400">
-                <span>ได้รับโทเคน (ใบละ {baht.format(zone.tokens)})</span>
-                <span className="tabular-nums">+{baht.format(zone.tokens * tickets)}</span>
+                <span>ได้รับโทเคน (ใบละ {num.format(zone.tokens)})</span>
+                <span className="tabular-nums">+{num.format(zone.tokens * tickets)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-medium text-foreground">

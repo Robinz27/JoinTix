@@ -15,7 +15,7 @@ import { Icon } from "@/components/icon";
  * wrong way as you line the QR up. A phone's back camera says "environment" and stays as it is. Only the
  * picture on screen flips; jsQR reads the video's own frames, so it never sees a mirrored code.
  */
-export function shouldMirror(media: MediaStream) {
+function shouldMirror(media: MediaStream) {
   return media.getVideoTracks()[0]?.getSettings().facingMode !== "environment";
 }
 

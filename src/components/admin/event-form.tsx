@@ -28,6 +28,7 @@ import { Icon, type IconSvgElement } from "@/components/icon";
 import { Hint } from "@/components/ui/hint";
 import { Switch } from "@/components/ui/switch";
 import { PUBLISH_STATES, SLUG_PATTERN, type PublishState } from "@/lib/event-fields";
+import { num } from "@/lib/format";
 
 // สร้าง / แก้ไขอีเวนต์ (app/admin/events/new, app/admin/events/[id]): every field of an event and its ticket
 // zones in one form, saved together by saveEvent. The form is submitted by hand (onSubmit) rather than
@@ -66,7 +67,6 @@ export type EventFormValues = {
 
 type ZoneRow = EventFormZone & { key: string };
 
-const baht = new Intl.NumberFormat("th-TH");
 // Keys for zones not saved yet. The first ones go by position, so the server's HTML and the browser agree
 // (a module-wide counter would have counted on in each and broken hydration); ones added later count from here
 let addedKey = 0;
@@ -273,7 +273,7 @@ export function EventForm({ event, posters, part }: { event?: EventFormValues; p
             </div>
           </Section>
 
-          <Section off={notTickets} icon={Ticket02Icon} title="โซนบัตร" subtitle={`${zones.length} โซน · ${baht.format(capacity)} ใบ · ขายหมดได้ ฿${baht.format(potential)}`}>
+          <Section off={notTickets} icon={Ticket02Icon} title="โซนบัตร" subtitle={`${zones.length} โซน · ${num.format(capacity)} ใบ · ขายหมดได้ ฿${num.format(potential)}`}>
             <ol className="space-y-3">
               {zones.map((zone, i) => (
                 <li key={zone.key} className="rounded-xl border border-border bg-background/40 p-3 sm:p-3.5">
@@ -282,7 +282,7 @@ export function EventForm({ event, posters, part }: { event?: EventFormValues; p
                       {i + 1}
                     </span>
                     <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{zone.name || "โซนใหม่"}</p>
-                    {zone.sold > 0 && <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">ขายแล้ว {baht.format(zone.sold)}</span>}
+                    {zone.sold > 0 && <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">ขายแล้ว {num.format(zone.sold)}</span>}
                     <Hint label="เลื่อนขึ้น">
                       <button type="button" aria-label="เลื่อนขึ้น" disabled={i === 0} onClick={() => move(i, -1)} className={iconButton}>
                         <Icon icon={ArrowUp01Icon} className="size-4" />
@@ -341,7 +341,7 @@ export function EventForm({ event, posters, part }: { event?: EventFormValues; p
                         className={`${input} tabular-nums`}
                       />
                     </Field>
-                    <Field id={`${ids}-zone-${zone.key}-capacity`} title={zone.sold > 0 ? `จำนวนบัตร (ขั้นต่ำ ${baht.format(zone.sold)})` : "จำนวนบัตร"}>
+                    <Field id={`${ids}-zone-${zone.key}-capacity`} title={zone.sold > 0 ? `จำนวนบัตร (ขั้นต่ำ ${num.format(zone.sold)})` : "จำนวนบัตร"}>
                       <input
                         id={`${ids}-zone-${zone.key}-capacity`}
                         type="number"
@@ -358,7 +358,7 @@ export function EventForm({ event, posters, part }: { event?: EventFormValues; p
                     <Field
                       id={`${ids}-zone-${zone.key}-tokens`}
                       title="โทเคนต่อใบ (แลกสินค้าในงาน)"
-                      note={zone.tokens > 0 && zone.price > 0 ? `≈ 1 โทเคนต่อ ฿${baht.format(Math.round((zone.price / zone.tokens) * 100) / 100)}` : "0 = ไม่แถมโทเคน"}
+                      note={zone.tokens > 0 && zone.price > 0 ? `≈ 1 โทเคนต่อ ฿${num.format(Math.round((zone.price / zone.tokens) * 100) / 100)}` : "0 = ไม่แถมโทเคน"}
                     >
                       <input
                         id={`${ids}-zone-${zone.key}-tokens`}

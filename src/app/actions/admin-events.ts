@@ -6,7 +6,7 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { events, merchItems, merchVariants, orders, ticketZones } from "@/db/schema";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { dropIfUnused } from "@/lib/admin-events";
 import { auditQuery, changesOf } from "@/lib/audit";
 import type { AuditChange } from "@/lib/audit-actions";
@@ -17,7 +17,8 @@ import { isPosterSrc } from "@/lib/poster";
 import { requirePermission } from "@/lib/session";
 import { deleteUploadedImage, saveUploadedImage } from "@/lib/uploads";
 import { isPromptPayTarget } from "@/lib/promptpay";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
+import { formText } from "@/lib/form";
 
 // หลังบ้าน's event actions (app/admin/events, components/admin/event-form.tsx). Each checks the permission
 // itself, and each save expires the storefront's cached events (lib/events.ts) so the change shows at once.
@@ -25,7 +26,6 @@ import { uuidv7 } from "@/lib/uuid";
 const MAX_ZONES = 20;
 const MAX_TICKETS = 1_000_000;
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 /** A datetime-local value ("2026-12-14T19:00") is Thai time */
 function thaiTime(value: string): Date | undefined {
@@ -133,34 +133,34 @@ function parseGallery(form: FormData): { entries: (string | File)[] } | { error:
 /** สร้าง / แก้ไขอีเวนต์: every field of the event and its whole list of zones, written together */
 export async function saveEvent(_: SaveEventState, form: FormData): Promise<SaveEventState> {
   await requirePermission("events.manage", "/admin/events");
-  const id = text(form, "eventId");
-  const title = text(form, "title");
-  const slug = text(form, "slug").toLowerCase();
-  const organizer = text(form, "organizer");
-  const venue = text(form, "venue");
-  const venueArea = text(form, "venueArea");
+  const id = formText(form, "eventId");
+  const title = formText(form, "title");
+  const slug = formText(form, "slug").toLowerCase();
+  const organizer = formText(form, "organizer");
+  const venue = formText(form, "venue");
+  const venueArea = formText(form, "venueArea");
   // Both or neither: a pin is a point, half of one is nothing
-  const latRaw = text(form, "latitude");
-  const lngRaw = text(form, "longitude");
+  const latRaw = formText(form, "latitude");
+  const lngRaw = formText(form, "longitude");
   const latitude = latRaw ? Number(latRaw) : null;
   const longitude = lngRaw ? Number(lngRaw) : null;
   const description = String(form.get("description") ?? "").trim().replace(/\r\n/g, "\n");
-  let poster = text(form, "poster");
+  let poster = formText(form, "poster");
   // A new picture from the form (components/admin/poster-field.tsx) wins over the path field
   const file = form.get("posterFile");
   const upload = file instanceof File && file.size > 0 ? file : null;
-  const startsAt = thaiTime(text(form, "startsAt"));
-  const doorsAt = thaiTime(text(form, "doorsAt"));
-  const salesStartAt = thaiTime(text(form, "salesStartAt"));
-  const salesEndRaw = text(form, "salesEndAt");
+  const startsAt = thaiTime(formText(form, "startsAt"));
+  const doorsAt = thaiTime(formText(form, "doorsAt"));
+  const salesStartAt = thaiTime(formText(form, "salesStartAt"));
+  const salesEndRaw = formText(form, "salesEndAt");
   const salesEndAt = salesEndRaw ? thaiTime(salesEndRaw) : null;
-  const status = text(form, "status") as PublishState;
+  const status = formText(form, "status") as PublishState;
   const featured = form.get("featured") === "1";
-  const maxPerOrder = Number(text(form, "maxPerOrder"));
-  const tokenPrice = Number(text(form, "tokenPrice"));
-  const promptpayId = text(form, "promptpayId").replace(/[\s-]/g, "");
-  const promptpayName = text(form, "promptpayName");
-  const slipCheck = text(form, "slipCheck") === "manual" ? "manual" : "api";
+  const maxPerOrder = Number(formText(form, "maxPerOrder"));
+  const tokenPrice = Number(formText(form, "tokenPrice"));
+  const promptpayId = formText(form, "promptpayId").replace(/[\s-]/g, "");
+  const promptpayName = formText(form, "promptpayName");
+  const slipCheck = formText(form, "slipCheck") === "manual" ? "manual" : "api";
   const allowReentry = form.get("allowReentry") === "1";
 
   if (!title || title.length > 120) return { error: "กรอกชื่ออีเวนต์ (ไม่เกิน 120 ตัวอักษร)" };
@@ -369,11 +369,11 @@ export async function duplicateEvent(eventId: string): Promise<AdminFormState> {
 /** ลบอีเวนต์ for good: the slug typed back confirms it. One with tickets sold is closed instead, not deleted */
 export async function deleteEvent(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   await requirePermission("events.manage", "/admin/events");
-  const id = text(form, "eventId");
+  const id = formText(form, "eventId");
   const db = getDb();
-  const [target] = /^[0-9a-f-]{36}$/i.test(id) ? await db.select().from(events).where(eq(events.id, id)).limit(1) : [];
+  const [target] = isUuid(id) ? await db.select().from(events).where(eq(events.id, id)).limit(1) : [];
   if (!target) return { error: "ไม่พบอีเวนต์นี้ อาจถูกลบไปแล้ว" };
-  if (text(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
+  if (formText(form, "confirm").toLowerCase() !== target.slug) return { error: "พิมพ์ลิงก์ (slug) ให้ตรงเพื่อยืนยัน" };
   const [{ sold }] = await db.select({ sold: sum(ticketZones.sold).mapWith(Number) }).from(ticketZones).where(eq(ticketZones.eventId, id));
   if (sold > 0) return { error: `ขายบัตรไปแล้ว ${sold} ใบ ลบไม่ได้ ให้ตั้งสถานะเป็น "ปิดการขาย" แทน` };
   // Even lapsed or cancelled orders are a record of who tried to buy: an event with any stays, closed

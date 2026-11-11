@@ -11,11 +11,10 @@ import { getMember, memberOrders } from "@/lib/admin-members";
 import { listLogs } from "@/lib/audit-log";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { baht, num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ข้อมูลสมาชิก" };
 
-const num = new Intl.NumberFormat("th-TH");
-const baht = (n: number) => `฿${num.format(n)}`;
 const stamp = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const at = (iso: string | null) => (iso ? stamp.format(new Date(iso)) : "—");
 const dateOnly = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });

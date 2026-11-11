@@ -42,7 +42,7 @@ export type AuditRow = typeof auditLogs.$inferInsert;
 const SECRET_KEY = /pass(word)?|token$|secret|otp|hash|cookie|authorization/i;
 
 /** A copy with nothing secret in it: keys like `password` go, and a QR's content is never kept */
-export function scrub<T>(value: T): T {
+function scrub<T>(value: T): T {
   if (value === null || value === undefined) return value;
   if (value instanceof Date) return value.toISOString() as T;
   if (typeof value === "string") return (value.startsWith("JTX1.") ? "[QR]" : value.length > 2000 ? `${value.slice(0, 2000)}…` : value) as T;
@@ -72,7 +72,7 @@ export async function actorById(userId: string): Promise<AuditActor | null> {
 }
 
 /** Whoever is signed in on this request, or null */
-export async function currentActor(): Promise<AuditActor | null> {
+async function currentActor(): Promise<AuditActor | null> {
   try {
     const session = await getSession();
     if (!session) return null;

@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
 import { getDb } from "@/db";
 import { adminRoles, auditLogs, events, orders, session, shopSaleItems, shopSales, shopStaff, shops, ticketZones, tickets, tokenTransactions, user } from "@/db/schema";
 import { merchOf, shipmentsOf, type OrderMerch, type OrderShipment } from "@/lib/orders";
@@ -41,7 +42,8 @@ export type MemberStats = {
   failedLogins30d: number;
 };
 
-export async function getMember(id: string): Promise<{ profile: MemberProfile; stats: MemberStats } | null> {
+/** One member and their totals; cached per request, since the layout and the page both ask */
+export const getMember = cache(async (id: string): Promise<{ profile: MemberProfile; stats: MemberStats } | null> => {
   if (!/^[\w-]{1,64}$/.test(id)) return null;
   const db = getDb();
   const [row] = await db
@@ -137,7 +139,7 @@ export async function getMember(id: string): Promise<{ profile: MemberProfile; s
       failedLogins30d: logins.failed,
     },
   };
-}
+});
 
 export type MemberTicket = { id: string; code: string; seq: number; status: "valid" | "used" | "void"; checkedInAt: string | null; checkedInBy: string | null };
 

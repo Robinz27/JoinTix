@@ -11,14 +11,13 @@ import { FadeImage } from "@/components/ui/fade-image";
 import { listMyTickets, openOrders, tokenBalances } from "@/lib/orders";
 import { isRemote } from "@/lib/poster";
 import { getSession } from "@/lib/session";
+import { bahtOrFree, num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "บัตรของฉัน", robots: { index: false } };
 
 const dateFormat = new Intl.DateTimeFormat("th-TH", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
 const timeFormat = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
-const num = new Intl.NumberFormat("th-TH");
-const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${num.format(n)}`);
 
 export default function TicketsPage({ searchParams }: PageProps<"/tickets">) {
   return (
@@ -65,7 +64,7 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
           >
             <Icon icon={Clock01Icon} className="size-4 shrink-0" />
             <span className="min-w-0 flex-1">
-              <b className="font-medium">{order.status === "review" ? "รอตรวจสลิป" : "รอชำระเงิน"}</b> · {order.title} ({order.code}) {baht(order.total)}
+              <b className="font-medium">{order.status === "review" ? "รอตรวจสลิป" : "รอชำระเงิน"}</b> · {order.title} ({order.code}) {bahtOrFree(order.total)}
             </span>
             <Icon icon={ArrowRight01Icon} className="size-4 shrink-0" />
           </Link>
@@ -108,7 +107,7 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border px-4 py-3 text-xs sm:grid-cols-4 sm:px-5">
                   <Fact label="คำสั่งซื้อ">{group.code}</Fact>
                   <Fact label="ประเภทบัตร">{group.zone?.name ?? "ไม่ซื้อบัตร"}</Fact>
-                  <Fact label="ยอดชำระ">{group.merch.length ? baht(group.total) : `${group.quantity} × ${baht(group.unitPrice)} = ${baht(group.total)}`}</Fact>
+                  <Fact label="ยอดชำระ">{group.merch.length ? bahtOrFree(group.total) : `${group.quantity} × ${bahtOrFree(group.unitPrice)} = ${bahtOrFree(group.total)}`}</Fact>
                   <Fact label="โทเคนรวมงานนี้">
                     <span className="text-amber-600 dark:text-amber-400">{num.format(balance)}</span>
                   </Fact>

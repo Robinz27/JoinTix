@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { DeliveryTruck01Icon, Loading03Icon, Undo02Icon } from "@hugeicons/core-free-icons";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { saveShipped, undoShipped } from "@/app/actions/shipments";
 import { Notice } from "@/components/admin/form";
 import { Badge, card, input, pill, pillPrimary } from "@/components/admin/ui";

@@ -9,10 +9,10 @@ import { adminEventOptions } from "@/lib/admin-events";
 import { LOGS_PER_PAGE, isFiltered, listLogs, logActors, logQuery, logStats, readFilters } from "@/lib/audit-log";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ประวัติการใช้งาน" };
 
-const num = new Intl.NumberFormat("th-TH");
 
 /**
  * ประวัติการใช้งาน: what people changed, newest first, one sentence a row ("สมชาย แก้ไขอีเวนต์ …"), opening to the

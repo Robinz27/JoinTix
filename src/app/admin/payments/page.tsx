@@ -9,11 +9,10 @@ import { slip2goReady } from "@/lib/slip2go";
 import { slipUrl } from "@/lib/slip-url";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { baht, num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ตรวจสลิป" };
 
-const num = new Intl.NumberFormat("th-TH");
-const money = (n: number) => `฿${num.format(n)}`;
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 
 /**
@@ -82,7 +81,7 @@ function SlipCard({ row, members }: { row: ReviewRow; members: boolean }) {
       </a>
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xl font-semibold text-foreground tabular-nums">{money(row.amount)}</p>
+          <p className="text-xl font-semibold text-foreground tabular-nums">{baht(row.amount)}</p>
           {row.status === "approved" && <Badge tone="good">อนุมัติแล้ว{row.approvedVia === "api" ? " (อัตโนมัติ)" : ""}</Badge>}
           {row.status === "rejected" && <Badge tone="danger">ปฏิเสธ</Badge>}
         </div>
@@ -109,7 +108,7 @@ function SlipCard({ row, members }: { row: ReviewRow; members: boolean }) {
           {(row.transRef || row.paidAmount !== null) && (
             <>
               <Row label="ธนาคารบอกว่า">
-                <span className={short ? "font-medium text-red-600 dark:text-red-400" : ""}>{row.paidAmount !== null ? money(row.paidAmount) : "-"}</span>
+                <span className={short ? "font-medium text-red-600 dark:text-red-400" : ""}>{row.paidAmount !== null ? baht(row.paidAmount) : "-"}</span>
                 {row.senderName && ` จาก ${row.senderName}`}
                 {row.paidAt && ` · ${when.format(new Date(row.paidAt))}`}
               </Row>
@@ -127,7 +126,7 @@ function SlipCard({ row, members }: { row: ReviewRow; members: boolean }) {
             </Row>
           )}
         </dl>
-        {row.status === "review" && <SlipDecision paymentId={row.id} code={row.order.code} amount={money(row.amount)} />}
+        {row.status === "review" && <SlipDecision paymentId={row.id} code={row.order.code} amount={baht(row.amount)} />}
       </div>
     </li>
   );

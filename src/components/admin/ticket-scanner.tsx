@@ -29,6 +29,7 @@ import { card, input, pill, pillPrimary } from "@/components/admin/ui";
 import { Icon, type IconSvgElement } from "@/components/icon";
 import type { DoorEvent, DoorScan, DoorStats, LogEntry } from "@/lib/checkins";
 import type { PickupResult } from "@/lib/orders";
+import { bahtOrFree, num } from "@/lib/format";
 
 // สแกนบัตร at the door: choose the event at this door, then the back camera reads a ticket's QR (jsQR, which
 // every phone's browser can run, iPhones included) or the code under it is typed in. The ticket shows with
@@ -45,8 +46,6 @@ type Outcome = DoorScan & { scanned: string; undone?: boolean };
 
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Bangkok" });
-const num = new Intl.NumberFormat("th-TH");
-const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${num.format(n)}`);
 const DOOR_KEY = "jointix-door-event";
 const DOOR_MESSAGES = {
   unsupported: "เบราว์เซอร์นี้เปิดกล้องไม่ได้ (ต้องเปิดเว็บผ่าน https) พิมพ์รหัสบัตรด้านล่างแทน",
@@ -553,7 +552,7 @@ function Result({
               {result.zone.name}
               {result.zone.note && <span className="block text-2xs text-muted-foreground">{result.zone.note}</span>}
             </Fact>
-            <Fact label="ราคาบัตร">{baht(result.order.unitPrice)}</Fact>
+            <Fact label="ราคาบัตร">{bahtOrFree(result.order.unitPrice)}</Fact>
             <Fact label="รหัสบัตร">
               <span className="font-mono tracking-wider">{result.ticket.code}</span>
               <span className="block text-2xs text-muted-foreground">
@@ -563,7 +562,7 @@ function Result({
             <Fact label="คำสั่งซื้อ">
               {result.order.code}
               <span className="block text-2xs text-muted-foreground">
-                {result.order.quantity} ใบ · {baht(result.order.total)}
+                {result.order.quantity} ใบ · {bahtOrFree(result.order.total)}
               </span>
             </Fact>
             <Fact label="บัตรงานนี้ทั้งหมด">

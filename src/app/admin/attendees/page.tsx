@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight01Icon, Calendar03Icon, CheckmarkCircle02Icon, Download04Icon, Search01Icon, Ticket02Icon, UserAdd01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons";
-import { Badge, Empty, MiniStat, PageHeader, Panel, card, iconButton, input, td, tdMain, tdTight, th } from "@/components/admin/ui";
+import { Badge, Empty, MiniStat, PageHeader, Panel, card, iconButton, input, pill, td, tdMain, tdTight, th } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { adminEventOptions } from "@/lib/admin-events";
 import { checkinList } from "@/lib/checkins";
 import { can } from "@/lib/permissions";
 import { listRegistrants, registrantStats, type RegistrantFilter } from "@/lib/registrants";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ผู้ลงทะเบียน" };
 
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
-const num = new Intl.NumberFormat("th-TH");
 const BOUGHT = [
   { value: "all", label: "ทั้งหมด" },
   { value: "yes", label: "ซื้อบัตรแล้ว" },
@@ -51,7 +51,7 @@ export default async function AttendeesPage({ searchParams }: PageProps<"/admin/
   return (
     <>
       <PageHeader eyebrow="Registrants" title="ผู้ลงทะเบียน" description={event ? `สมาชิกทุกคนที่สมัคร และสิ่งที่ซื้อในงาน ${event.title}` : "สมาชิกทุกคนที่สมัคร รวมคนที่ยังไม่ซื้อบัตร ซื้อแล้วกี่คน และเข้างานแล้วกี่ใบ"}>
-        <a href={`/admin/attendees/csv${href({})}`} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary max-sm:flex-1 max-sm:justify-center">
+        <a href={`/admin/attendees/csv${href({})}`} className={`${pill} max-sm:flex-1 max-sm:justify-center`}>
           <Icon icon={Download04Icon} className="size-4" />
           ดาวน์โหลด CSV
         </a>

@@ -4,10 +4,10 @@ import { Store01Icon } from "@hugeicons/core-free-icons";
 import { Badge, Empty, Panel, td, tdMain, tdTight, th } from "@/components/admin/ui";
 import { memberShops } from "@/lib/admin-members";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ร้านค้าของสมาชิก" };
 
-const num = new Intl.NumberFormat("th-TH");
 
 /** The shops this account works at (owner or staff, nothing to do with หลังบ้าน roles), and what they sold there */
 export default async function MemberShopsPage({ params }: PageProps<"/admin/users/[id]/shops">) {

@@ -7,13 +7,13 @@ import { ArrowRight01Icon, Coins01Icon, QrCodeIcon, Ticket01Icon } from "@hugeic
 import { Icon } from "@/components/icon";
 import { QrDialog } from "@/components/ticket-qr";
 import type { EventWallet, WalletTicket } from "@/lib/orders";
+import { num } from "@/lib/format";
 
 // The token chip in the navbar: how many tokens the signed-in visitor has at the event that's on now (or next), always
 // in sight while they buy food at the event. Opens a menu with each ticket's own tokens (every ticket is its own wallet)
 // and its QR, for paying at a shop straight away. Hidden for anyone without a ticket. Asked for again on every page
 // change and every 30 seconds while the tab is in view, so a top-up or a sale shows soon after it happens.
 
-const num = new Intl.NumberFormat("th-TH");
 const REFRESH_MS = 30_000;
 
 export function TokenChip({ compact = false }: { compact?: boolean }) {

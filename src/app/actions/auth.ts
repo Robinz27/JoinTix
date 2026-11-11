@@ -9,6 +9,7 @@ import { user } from "@/db/schema";
 import { actorById, audit } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { safeNext } from "@/lib/session";
+import { formText } from "@/lib/form";
 
 export type LoginState = { error?: string; email?: string };
 export type SignupState = { error?: string; name?: string; email?: string; phone?: string; cohort?: string };
@@ -36,10 +37,9 @@ function messageFor(error: unknown) {
   return "ระบบขัดข้อง ลองใหม่อีกครั้ง";
 }
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 export async function signIn(_: LoginState, form: FormData): Promise<LoginState> {
-  const email = text(form, "email").toLowerCase();
+  const email = formText(form, "email").toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!email || !password) return { error: "กรอกอีเมลและรหัสผ่าน", email };
 
@@ -65,11 +65,11 @@ export async function signIn(_: LoginState, form: FormData): Promise<LoginState>
 }
 
 export async function signUp(_: SignupState, form: FormData): Promise<SignupState> {
-  const name = text(form, "name");
-  const email = text(form, "email").toLowerCase();
+  const name = formText(form, "name");
+  const email = formText(form, "email").toLowerCase();
   // Dashes and spaces are fine to type; the number is kept as digits only
-  const phone = text(form, "phone").replace(/[\s-]/g, "");
-  const cohort = text(form, "cohort").replace(/\s+/g, " ");
+  const phone = formText(form, "phone").replace(/[\s-]/g, "");
+  const cohort = formText(form, "cohort").replace(/\s+/g, " ");
   const password = String(form.get("password") ?? "");
   const back = { name, email, phone, cohort };
 
@@ -92,7 +92,7 @@ export async function signUp(_: SignupState, form: FormData): Promise<SignupStat
  * has an account, so the form can't be used to find out who has one.
  */
 export async function requestPasswordReset(_: ForgotState, form: FormData): Promise<ForgotState> {
-  const email = text(form, "email").toLowerCase();
+  const email = formText(form, "email").toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: MESSAGES.INVALID_EMAIL };
 
   try {

@@ -5,19 +5,18 @@ import { notFound, redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { getDb } from "@/db";
 import { events, shopItems, shopSales, shopStaff, shops, user } from "@/db/schema";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { adjustTokens, findCustomer, recentSales, shopRole, recentTopUps, sell, topUp, undoTopUp, voidSale, type CustomerAnswer, type SaleAnswer, type SaleEntry, type SaleLine, type TopUpEntry } from "@/lib/shops";
 import { audit, auditQuery, changesOf } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { saveUploadedImage } from "@/lib/uploads";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
 import { getAdminAccess, getSession, requirePermission } from "@/lib/session";
+import { formText } from "@/lib/form";
 
 // Shops, their menus and people (app/admin/shops, and app/(site)/shop for their owners), the top-up desk
 // (app/admin/tokens) and the tills. The rules live in lib/shops.ts; these check who is asking.
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Who may touch this shop: anyone in หลังบ้าน who manages shops, or the shop's own people, who need no role there.
@@ -26,7 +25,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function shopAccess(shopId: string, need: "owner" | "member") {
   const session = await getSession();
   if (!session) redirect("/login?next=/shop");
-  if (!UUID.test(shopId)) notFound();
+  if (!isUuid(shopId)) notFound();
   const access = await getAdminAccess();
   if (access && can(access, "shops.manage")) return { ...session, manager: true };
   const role = await shopRole(session.user.id, shopId);
@@ -36,7 +35,7 @@ async function shopAccess(shopId: string, need: "owner" | "member") {
 
 /** The shop a menu item belongs to, so an owner reaches only their own */
 async function shopOfItem(itemId: string) {
-  if (!UUID.test(itemId)) notFound();
+  if (!isUuid(itemId)) notFound();
   const [item] = await getDb().select({ shopId: shopItems.shopId }).from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
   if (!item) notFound();
   return item.shopId;
@@ -53,8 +52,8 @@ async function shopInfo(shopId: string) {
 }
 
 function shopFields(form: FormData) {
-  const name = text(form, "name");
-  const note = text(form, "note");
+  const name = formText(form, "name");
+  const note = formText(form, "note");
   if (!name || name.length > 80) return { error: "กรอกชื่อร้าน (ไม่เกิน 80 ตัวอักษร)" };
   if (note.length > 200) return { error: "รายละเอียดยาวเกิน 200 ตัวอักษร" };
   return { name, note };
@@ -65,8 +64,8 @@ export async function createShop(_: AdminFormState, form: FormData): Promise<Adm
   await requirePermission("shops.manage", "/admin/shops");
   const fields = shopFields(form);
   if ("error" in fields) return fields;
-  const eventId = text(form, "eventId");
-  if (!UUID.test(eventId)) return { error: "เลือกอีเวนต์ก่อน" };
+  const eventId = formText(form, "eventId");
+  if (!isUuid(eventId)) return { error: "เลือกอีเวนต์ก่อน" };
   const db = getDb();
   const [event] = await db.select({ id: events.id }).from(events).where(eq(events.id, eventId)).limit(1);
   if (!event) return { error: "ไม่พบอีเวนต์นี้" };
@@ -83,8 +82,8 @@ export async function updateShop(_: AdminFormState, form: FormData): Promise<Adm
   await requirePermission("shops.manage", "/admin/shops");
   const fields = shopFields(form);
   if ("error" in fields) return fields;
-  const id = text(form, "shopId");
-  if (!UUID.test(id)) return { error: "ไม่พบร้านนี้" };
+  const id = formText(form, "shopId");
+  if (!isUuid(id)) return { error: "ไม่พบร้านนี้" };
   const db = getDb();
   const [before] = await db.select().from(shops).where(eq(shops.id, id)).limit(1);
   if (!before) return { error: "ไม่พบร้านนี้ อาจถูกลบไปแล้ว" };
@@ -100,8 +99,8 @@ export async function updateShop(_: AdminFormState, form: FormData): Promise<Adm
 /** ลบร้าน: one that has sold anything stays for the report, closed instead */
 export async function deleteShop(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   await requirePermission("shops.manage", "/admin/shops");
-  const id = text(form, "shopId");
-  if (!UUID.test(id)) return { error: "ไม่พบร้านนี้" };
+  const id = formText(form, "shopId");
+  if (!isUuid(id)) return { error: "ไม่พบร้านนี้" };
   const db = getDb();
   const [{ n }] = await db.select({ n: count() }).from(shopSales).where(eq(shopSales.shopId, id));
   if (n > 0) return { error: `ร้านนี้มีรายการขาย ${n} รายการ ลบไม่ได้ ให้ปิดร้านแทน` };
@@ -130,13 +129,13 @@ export async function deleteShop(_: AdminFormState, form: FormData): Promise<Adm
  * (the client's rule: หลังบ้าน sets up each shop and what it sells; the shop sets its price)
  */
 export async function saveShopItem(_: AdminFormState, form: FormData): Promise<AdminFormState> {
-  const shopId = text(form, "shopId");
+  const shopId = formText(form, "shopId");
   const { manager } = await shopAccess(shopId, "owner");
-  const itemId = text(form, "itemId");
+  const itemId = formText(form, "itemId");
   if (!manager && !itemId) return { error: "เพิ่มรายการใหม่ได้ที่ผู้จัดงาน" };
-  let name = text(form, "name");
-  const tokens = Number(text(form, "tokens"));
-  if (!UUID.test(shopId)) return { error: "ไม่พบร้านนี้" };
+  let name = formText(form, "name");
+  const tokens = Number(formText(form, "tokens"));
+  if (!isUuid(shopId)) return { error: "ไม่พบร้านนี้" };
   if (!name || name.length > 80) return { error: "กรอกชื่อรายการ (ไม่เกิน 80 ตัวอักษร)" };
   if (!Number.isInteger(tokens) || tokens < 1 || tokens > 100_000) return { error: "โทเคนต้องเป็นจำนวนเต็ม 1 ขึ้นไป" };
   const db = getDb();
@@ -144,7 +143,7 @@ export async function saveShopItem(_: AdminFormState, form: FormData): Promise<A
   if (!shop) return { error: "ไม่พบร้านนี้" };
   const details = { shop: shop.name };
   if (itemId) {
-    const [before] = UUID.test(itemId) ? await db.select().from(shopItems).where(and(eq(shopItems.id, itemId), eq(shopItems.shopId, shopId))).limit(1) : [];
+    const [before] = isUuid(itemId) ? await db.select().from(shopItems).where(and(eq(shopItems.id, itemId), eq(shopItems.shopId, shopId))).limit(1) : [];
     if (!before) return { error: "ไม่พบรายการนี้ อาจถูกลบไปแล้ว" };
     // The owner's form sends the name back unchanged; whatever it says, only หลังบ้าน renames
     if (!manager) name = before.name;
@@ -204,12 +203,12 @@ export async function deleteShopItem(itemId: string) {
 
 /** คนของร้าน: found by email, any account at all. Owners are named from หลังบ้าน; an owner adds their own staff */
 export async function addShopStaff(_: AdminFormState, form: FormData): Promise<AdminFormState> {
-  const shopId = text(form, "shopId");
+  const shopId = formText(form, "shopId");
   const { manager } = await shopAccess(shopId, "owner");
   // Who works at a shop is หลังบ้าน's to decide, owners and staff alike
   if (!manager) notFound();
-  const role = text(form, "role") === "owner" ? "owner" : "staff";
-  const email = text(form, "email").toLowerCase();
+  const role = formText(form, "role") === "owner" ? "owner" : "staff";
+  const email = formText(form, "email").toLowerCase();
   const db = getDb();
   const [member] = await db.select({ id: user.id, name: user.name }).from(user).where(eq(user.email, email)).limit(1);
   if (!member) return { error: "ไม่พบบัญชีที่ใช้อีเมลนี้ ให้เขาสมัครสมาชิกก่อน" };
@@ -282,7 +281,7 @@ export async function topUpTokens(form: FormData): Promise<CustomerAnswer> {
   const { user: me } = await requirePermission("tokens.topup", "/admin/tokens");
   const slip = await slipOf(form);
   if (slip.error) return { error: slip.error };
-  return topUp({ scanned: text(form, "scanned"), eventId: text(form, "eventId"), tokens: Number(text(form, "tokens")), key: text(form, "key"), note: text(form, "note"), slip: slip.path, by: me.id });
+  return topUp({ scanned: formText(form, "scanned"), eventId: formText(form, "eventId"), tokens: Number(formText(form, "tokens")), key: formText(form, "key"), note: formText(form, "note"), slip: slip.path, by: me.id });
 }
 
 /** ปรับยอด: + or − tokens on a ticket with a reason; may go below zero (lib/shops.ts adjustTokens) */
@@ -291,12 +290,12 @@ export async function adjustTicketTokens(form: FormData): Promise<CustomerAnswer
   const slip = await slipOf(form);
   if (slip.error) return { error: slip.error };
   return adjustTokens({
-    scanned: text(form, "scanned"),
-    eventId: text(form, "eventId"),
-    tokens: Number(text(form, "tokens")),
-    baht: Number(text(form, "baht") || 0),
-    note: text(form, "note"),
-    key: text(form, "key"),
+    scanned: formText(form, "scanned"),
+    eventId: formText(form, "eventId"),
+    tokens: Number(formText(form, "tokens")),
+    baht: Number(formText(form, "baht") || 0),
+    note: formText(form, "note"),
+    key: formText(form, "key"),
     slip: slip.path,
     by: me.id,
   });
@@ -309,7 +308,7 @@ export async function undoTopUpTokens(transactionId: string): Promise<{ error?: 
 
 export async function topUpFeed(eventId: string): Promise<TopUpEntry[]> {
   await requirePermission(DESK, "/admin/tokens");
-  return UUID.test(eventId) ? recentTopUps(eventId) : [];
+  return isUuid(eventId) ? recentTopUps(eventId) : [];
 }
 
 /* ─────────────── ขายที่ร้าน ─────────────── */

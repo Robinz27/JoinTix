@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { Cancel01Icon, Delete02Icon, ImageAdd01Icon, Loading03Icon, Package01Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { saveMerch, type MerchInput } from "@/app/actions/admin-merch";
 import { Notice, hint, label } from "@/components/admin/form";
 import { Empty, card, iconButton, input, pill, pillPrimary } from "@/components/admin/ui";

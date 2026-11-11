@@ -5,7 +5,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { refresh, updateTag } from "next/cache";
 import { getDb } from "@/db";
 import { events, merchItems, merchVariants, orderItems } from "@/db/schema";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { dropIfUnused } from "@/lib/admin-events";
 import { auditQuery, changesOf } from "@/lib/audit";
 import type { AuditChange } from "@/lib/audit-actions";

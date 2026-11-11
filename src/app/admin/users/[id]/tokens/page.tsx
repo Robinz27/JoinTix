@@ -5,10 +5,10 @@ import { TOKEN_REASONS } from "@/components/admin/order-status";
 import { Empty, Panel, td, tdMain, tdTight, th } from "@/components/admin/ui";
 import { memberTokens } from "@/lib/admin-members";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "โทเคนของสมาชิก" };
 
-const num = new Intl.NumberFormat("th-TH");
 const signed = (n: number) => `${n > 0 ? "+" : ""}${num.format(n)}`;
 const stamp = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Bangkok" });
 

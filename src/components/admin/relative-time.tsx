@@ -1,15 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { TZ, dayKey, fullDateTime as full } from "@/lib/format";
 
 // "12 นาทีที่แล้ว" and "วันนี้ / เมื่อวาน" for ประวัติการใช้งาน. The server can't know when the page will be read, so it
 // sends the clock time and the date; the browser swaps in the relative words and keeps them current, once a minute.
 
-const TZ = "Asia/Bangkok";
 const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
-const full = new Intl.DateTimeFormat("th-TH", { dateStyle: "long", timeStyle: "medium", timeZone: TZ });
 const dayFormat = new Intl.DateTimeFormat("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: TZ });
-const dayKey = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: TZ });
 
 /** The current minute, shared by every timestamp on the page; null while rendering on the server */
 const minute = {

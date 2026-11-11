@@ -2,8 +2,8 @@ import { Coins01Icon } from "@hugeicons/core-free-icons";
 import { card } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import type { Customer } from "@/lib/shops";
+import { num } from "@/lib/format";
 
-const num = new Intl.NumberFormat("th-TH");
 
 /** Who was just scanned and what they have left, for checking the name against the person in front of you */
 export function CustomerCard({ customer }: { customer: Customer }) {

@@ -9,6 +9,8 @@ import { audit, auditQuery, changesOf, roleLabel } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import type { AdminAccess } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { isUuid } from "@/lib/uuid";
+import { formText, type AdminFormState } from "@/lib/form";
 
 // หลังบ้าน's member actions (app/admin/users, components/admin/member-actions.tsx). Each one checks the
 // permission itself: a server action is a public endpoint, whatever page its button sits on.
@@ -16,9 +18,7 @@ import { requirePermission } from "@/lib/session";
 // จัดการสมาชิก reaches customers only. Staff accounts stay with the super admin, otherwise someone with this
 // permission could set a super admin's password and sign in as them.
 
-export type AdminFormState = { ok?: string; error?: string };
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 /** Whether this account may touch that member */
 async function mayTouch(access: AdminAccess, memberId: string) {
@@ -32,14 +32,14 @@ const NOT_YOURS = "บัญชีทีมงานแก้ได้เฉพ�
 /** แก้ไขสมาชิก: name, email, phone, whether the email counts as verified, role, and optionally a new password */
 export async function updateMember(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   const { user: me, session: mine, access } = await requirePermission("members.manage", "/admin/users");
-  const id = text(form, "userId");
-  const name = text(form, "name");
-  const email = text(form, "email").toLowerCase();
-  const phone = text(form, "phone").replace(/[\s-]/g, "");
-  const cohort = text(form, "cohort").replace(/\s+/g, " ");
+  const id = formText(form, "userId");
+  const name = formText(form, "name");
+  const email = formText(form, "email").toLowerCase();
+  const phone = formText(form, "phone").replace(/[\s-]/g, "");
+  const cohort = formText(form, "cohort").replace(/\s+/g, " ");
   const password = String(form.get("password") ?? "");
   const emailVerified = form.get("emailVerified") === "1";
-  const role = text(form, "role");
+  const role = formText(form, "role");
   const self = id === me.id;
 
   if (!id) return { error: "ไม่พบบัญชีนี้" };
@@ -62,7 +62,7 @@ export async function updateMember(_: AdminFormState, form: FormData): Promise<A
   if (access.superAdmin && !self) {
     if (role === "user" || role === "super_admin") rights = { role, adminRoleId: null };
     else {
-      const [found] = await db.select({ id: adminRoles.id }).from(adminRoles).where(eq(adminRoles.id, /^[0-9a-f-]{36}$/i.test(role) ? role : "00000000-0000-0000-0000-000000000000")).limit(1);
+      const [found] = await db.select({ id: adminRoles.id }).from(adminRoles).where(eq(adminRoles.id, isUuid(role) ? role : "00000000-0000-0000-0000-000000000000")).limit(1);
       if (!found) return { error: "เลือกสิทธิ์ให้ถูกต้อง" };
       rights = { role: "user", adminRoleId: found.id };
     }
@@ -160,7 +160,7 @@ export async function signOutMember(userId: string, sessionId?: string): Promise
 /** ลบบัญชี for good: the email typed back confirms it. Sessions and the login go with it (ON DELETE CASCADE) */
 export async function deleteMember(_: AdminFormState, form: FormData): Promise<AdminFormState> {
   const { user: me, access } = await requirePermission("members.manage", "/admin/users");
-  const id = text(form, "userId");
+  const id = formText(form, "userId");
   if (id === me.id) return { error: "ลบบัญชีของตัวเองไม่ได้" };
   if (!(await mayTouch(access, id))) return { error: NOT_YOURS };
 
@@ -171,7 +171,7 @@ export async function deleteMember(_: AdminFormState, form: FormData): Promise<A
     .where(eq(user.id, id))
     .limit(1);
   if (!target) return { error: "ไม่พบบัญชีนี้ อาจถูกลบไปแล้ว" };
-  if (text(form, "confirm").toLowerCase() !== target.email) return { error: "พิมพ์อีเมลให้ตรงเพื่อยืนยัน" };
+  if (formText(form, "confirm").toLowerCase() !== target.email) return { error: "พิมพ์อีเมลให้ตรงเพื่อยืนยัน" };
   // Orders and tickets are kept (they're the record of what was sold), so their owner is too
   const [bought] = await db.select({ id: orders.id }).from(orders).where(eq(orders.userId, id)).limit(1);
   if (bought) return { error: "บัญชีนี้มีประวัติการซื้อบัตร ลบไม่ได้" };

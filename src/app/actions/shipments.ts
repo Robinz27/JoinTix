@@ -4,14 +4,14 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { getDb } from "@/db";
 import { orderShipments, orders } from "@/db/schema";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { audit, changesOf } from "@/lib/audit";
 import { requirePermission } from "@/lib/session";
 import { markShipped, unmarkShipped } from "@/lib/shipments";
+import { isUuid } from "@/lib/uuid";
 
 // The จัดส่ง tab (app/admin/events/[id]/shipments)
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LABELS = { carrier: "ขนส่ง", trackingNo: "เลขพัสดุ", shipped: "ส่งแล้ว" };
 
 /** The shipment as it is now, with its order, for the log */
@@ -29,7 +29,7 @@ export async function saveShipped(orderId: string, carrier: string, trackingNo: 
   const { user } = await requirePermission("merch.ship", "/admin/events");
   const name = String(carrier ?? "").trim();
   const tracking = String(trackingNo ?? "").trim();
-  if (!UUID.test(orderId)) return { error: "ไม่พบคำสั่งซื้อนี้" };
+  if (!isUuid(orderId)) return { error: "ไม่พบคำสั่งซื้อนี้" };
   if (name.length > 60 || tracking.length > 60) return { error: "ขนส่งหรือเลขพัสดุยาวเกิน 60 ตัวอักษร" };
   const before = await shipmentOf(orderId);
   if (!before || !(await markShipped(orderId, user.id, name, tracking))) return { error: "ไม่พบคำสั่งซื้อนี้" };
@@ -46,7 +46,7 @@ export async function saveShipped(orderId: string, carrier: string, trackingNo: 
 
 export async function undoShipped(orderId: string) {
   await requirePermission("merch.ship", "/admin/events");
-  if (!UUID.test(orderId)) return;
+  if (!isUuid(orderId)) return;
   const before = await shipmentOf(orderId);
   if (!before) return;
   await unmarkShipped(orderId);

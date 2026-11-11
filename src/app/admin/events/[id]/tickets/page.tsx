@@ -6,10 +6,10 @@ import { Panel, td, tdMain, th } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { eventFormValues, getAdminEvent, listPosters } from "@/lib/admin-events";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "บัตร" };
 
-const num = new Intl.NumberFormat("th-TH");
 
 /** บัตร tab: what each zone has sold, and the zones themselves */
 export default async function EventTickets({ params }: PageProps<"/admin/events/[id]/tickets">) {

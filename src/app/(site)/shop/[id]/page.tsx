@@ -9,13 +9,13 @@ import { Icon } from "@/components/icon";
 import { ProfileSkeleton } from "@/components/skeletons";
 import { getSession } from "@/lib/session";
 import { getShop, listShops, shopRole } from "@/lib/shops";
+import { num } from "@/lib/format";
 
 // One shop for its owner: what it has earned, how many tokens each item takes (the one thing an owner changes),
 // and who works there (set by หลังบ้าน). Staff go straight to the till.
 
 export const metadata: Metadata = { title: "ร้านของฉัน", robots: { index: false } };
 
-const num = new Intl.NumberFormat("th-TH");
 
 export default function MyShopPage({ params }: PageProps<"/shop/[id]">) {
   return (

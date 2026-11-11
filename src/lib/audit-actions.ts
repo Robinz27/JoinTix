@@ -98,8 +98,6 @@ export type LogRange = (typeof LOG_RANGES)[number]["value"];
 
 export const isAuditAction = (value: string): value is AuditAction => Object.hasOwn(AUDIT_ACTIONS, value);
 
-export const actionLabel = (action: string) => (isAuditAction(action) ? AUDIT_ACTIONS[action].label : action);
-
 export const TARGET_TYPES: Record<string, string> = {
   user: "บัญชี",
   role: "โรล",

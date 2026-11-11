@@ -9,7 +9,7 @@ import { HOLD_MINUTES, issueOrder, releaseExpired, releaseOrder } from "@/lib/or
 import { isPromptPayTarget } from "@/lib/promptpay";
 import { checkSlip, slip2goReady } from "@/lib/slip2go";
 import { saveUploadedImage } from "@/lib/uploads";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
 
 // Paying by bank transfer: the checkout shows a PromptPay QR with the amount filled in, the buyer pays in their
 // banking app and sends the slip (from this device, or from their phone through a one-time link). Then:
@@ -23,7 +23,6 @@ import { uuidv7 } from "@/lib/uuid";
 // pending for another slip, or cancelled). One transfer pays once: the slip's QR hash and the bank reference are
 // unique among slips not turned down. Server only.
 
-const UUID = /^[0-9a-f-]{36}$/i;
 /** Turned-down slips one order may send in ten minutes, so the service isn't asked over and over */
 const MAX_TRIES = 5;
 
@@ -53,7 +52,7 @@ export type SlipAnswer = { ok: true; status: "paid" | "review" } | { ok: false; 
 export async function submitSlip(input: { orderId: string; userId: string | null; file: File; qr: string | null; from: "web" | "phone" }): Promise<SlipAnswer> {
   const { orderId, userId, file, from } = input;
   const qr = input.qr?.trim().slice(0, 1000) || null;
-  if (!UUID.test(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
+  if (!isUuid(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
   const db = getDb();
   await releaseExpired();
   const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), userId ? eq(orders.userId, userId) : undefined)).limit(1);
@@ -217,7 +216,7 @@ async function reject(input: {
 
 /** Free orders (total 0) have nothing to transfer: confirming issues the tickets */
 export async function confirmFree(orderId: string, userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!UUID.test(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
+  if (!isUuid(orderId)) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
   await releaseExpired();
   const [order] = await getDb().select().from(orders).where(and(eq(orders.id, orderId), eq(orders.userId, userId))).limit(1);
   if (!order) return { ok: false, error: "ไม่พบคำสั่งซื้อนี้" };
@@ -288,11 +287,6 @@ export async function listPayments(filter: { status: "review" | "done"; eventId?
   }));
 }
 
-export async function countReview(): Promise<number> {
-  const [row] = await getDb().select({ n: sql<number>`count(*)`.mapWith(Number) }).from(payments).where(eq(payments.status, "review"));
-  return row.n;
-}
-
 /** Whether `slip` (a stored path) belongs to some payment: the slip route serves nothing else */
 export async function isKnownSlip(slip: string) {
   const [row] = await getDb().select({ id: payments.id }).from(payments).where(eq(payments.slip, slip)).limit(1);
@@ -301,7 +295,7 @@ export async function isKnownSlip(slip: string) {
 
 /** อนุมัติสลิป: the order is paid and its tickets issued, by this member of staff */
 export async function approvePayment(paymentId: string, adminId: string): Promise<{ error?: string }> {
-  if (!UUID.test(paymentId)) return { error: "ไม่พบรายการนี้" };
+  if (!isUuid(paymentId)) return { error: "ไม่พบรายการนี้" };
   const db = getDb();
   const [p] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
   if (!p) return { error: "ไม่พบรายการนี้" };
@@ -329,7 +323,7 @@ export async function approvePayment(paymentId: string, adminId: string): Promis
  * "cancel" lets the order go and its tickets back on sale
  */
 export async function rejectPayment(paymentId: string, reason: string, then: "retry" | "cancel", adminId: string): Promise<{ error?: string }> {
-  if (!UUID.test(paymentId)) return { error: "ไม่พบรายการนี้" };
+  if (!isUuid(paymentId)) return { error: "ไม่พบรายการนี้" };
   const why = reason.trim().slice(0, 300);
   if (!why) return { error: "บอกเหตุผลที่ปฏิเสธ ลูกค้าจะเห็นข้อความนี้" };
   const db = getDb();
@@ -369,7 +363,7 @@ type Link = { orderId: string; userId: string; createdAt: number; used: boolean 
 const g = globalThis as unknown as { slipLinks?: Map<string, Link> };
 const links = (g.slipLinks ??= new Map());
 
-export const LINK_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const LINK_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 export function openSlipLink(orderId: string, userId: string): string {
   const now = Date.now();
@@ -395,7 +389,7 @@ export function spendSlipLink(token: string) {
 
 /** What the checkout page needs to know while it waits for the phone */
 export async function orderStatus(orderId: string, userId: string): Promise<string | null> {
-  if (!UUID.test(orderId)) return null;
+  if (!isUuid(orderId)) return null;
   await releaseExpired();
   const [row] = await getDb().select({ status: orders.status }).from(orders).where(and(eq(orders.id, orderId), eq(orders.userId, userId))).limit(1);
   return row?.status ?? null;

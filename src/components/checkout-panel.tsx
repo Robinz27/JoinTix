@@ -23,6 +23,7 @@ import { Icon } from "@/components/icon";
 import { attendeeName, attendeesProblem, EMPTY_ATTENDEE, type Attendee } from "@/lib/event-fields";
 import { shrinkImage } from "@/lib/shrink-image";
 import { readSlipQr } from "@/lib/slip-qr";
+import { baht } from "@/lib/format";
 
 // The checkout's lower half, in order: who each ticket is for, then the PromptPay QR and the slip (from this
 // device, or the buyer's phone through a one-time QR), or "รอตรวจสลิป" once a slip is in. The rules are in
@@ -33,7 +34,6 @@ const noSubscribe = () => () => {};
 const useClient = () => useSyncExternalStore(noSubscribe, () => true, () => false);
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const baht = (n: number) => `฿${n.toLocaleString("th-TH")}`;
 const field =
   "h-10 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-foreground/40";
 

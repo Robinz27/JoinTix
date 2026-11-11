@@ -11,12 +11,12 @@ import { latestPayment, paySettings } from "@/lib/payments";
 import { isPromptPayTarget, maskPromptPay, promptPayPayload } from "@/lib/promptpay";
 import { isRemote } from "@/lib/poster";
 import { getSession } from "@/lib/session";
+import { bahtOrFree } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ชำระเงิน", robots: { index: false } };
 
 const dateFormat = new Intl.DateTimeFormat("th-TH", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
 const timeFormat = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
-const baht = (n: number) => (n === 0 ? "ฟรี" : `฿${n.toLocaleString("th-TH")}`);
 
 export default function CheckoutPage({ params }: PageProps<"/checkout/[id]">) {
   return (
@@ -78,7 +78,7 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">จำนวน</dt>
                   <dd className="text-foreground tabular-nums">
-                    {order.quantity} ใบ × {baht(order.unitPrice)}
+                    {order.quantity} ใบ × {bahtOrFree(order.unitPrice)}
                   </dd>
                 </div>
               </>
@@ -94,14 +94,14 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
                   {merchLabel(item)}
                 </dt>
                 <dd className="shrink-0 text-foreground tabular-nums">
-                  {item.quantity} ชิ้น × {baht(item.unitPrice)}
+                  {item.quantity} ชิ้น × {bahtOrFree(item.unitPrice)}
                 </dd>
               </div>
             ))}
             {order.merch.length > 0 && (
               <div className="flex justify-between gap-3">
                 <dt className="shrink-0 text-muted-foreground">การรับสินค้า</dt>
-                <dd className="text-right text-foreground">{order.shipment ? `จัดส่ง ${baht(order.shipment.fee)}` : "รับที่หน้างาน"}</dd>
+                <dd className="text-right text-foreground">{order.shipment ? `จัดส่ง ${bahtOrFree(order.shipment.fee)}` : "รับที่หน้างาน"}</dd>
               </div>
             )}
             {order.shipment && (
@@ -121,7 +121,7 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
             )}
             <div className="flex justify-between gap-3 border-t border-border pt-2 text-base font-medium text-foreground">
               <dt>ยอดชำระ</dt>
-              <dd className="tabular-nums">{baht(order.total)}</dd>
+              <dd className="tabular-nums">{bahtOrFree(order.total)}</dd>
             </div>
           </dl>
         </section>

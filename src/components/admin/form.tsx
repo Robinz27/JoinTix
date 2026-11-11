@@ -1,5 +1,5 @@
 import { Alert02Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { Icon } from "@/components/icon";
 
 // Form pieces หลังบ้าน's dialogs and pages share (member-actions.tsx, event-form.tsx)

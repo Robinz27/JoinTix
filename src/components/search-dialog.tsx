@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { EventStatus } from "@/lib/event-fields";
 import type { EventSummary } from "@/lib/events";
 import { isRemote } from "@/lib/poster";
+import { num } from "@/lib/format";
 
 // The navbar's search (Ctrl/⌘ K), the palette from next.js-shop (4TUNEZ) for the whole site: results come as you
 // type, the site's pages matched on Thai and English words, then events, each row the event card in one line.
@@ -51,7 +52,6 @@ type State = { status: "loading" } | { status: "error"; message: string } | { st
 
 // Always Thai time, as on the event cards
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
-const num = new Intl.NumberFormat("th-TH");
 
 const STATUS: Record<EventStatus, { label: string; tone: string }> = {
   "on-sale": { label: "เปิดขาย", tone: "text-emerald-600 dark:text-emerald-400" },

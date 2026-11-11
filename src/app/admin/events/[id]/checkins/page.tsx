@@ -10,10 +10,10 @@ import { getAdminEvent } from "@/lib/admin-events";
 import { checkinList, doorStats, scanLog } from "@/lib/checkins";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "รายชื่อเข้างาน" };
 
-const num = new Intl.NumberFormat("th-TH");
 const when = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Bangkok" });
 
 const STATES = [

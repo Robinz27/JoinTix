@@ -18,10 +18,10 @@ import { user } from "@/db/schema";
 import { listAdminEvents } from "@/lib/admin-events";
 import { can } from "@/lib/permissions";
 import { requireStaff } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ภาพรวม" };
 
-const num = new Intl.NumberFormat("th-TH");
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 
 export default async function AdminOverview() {

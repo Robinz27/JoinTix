@@ -7,6 +7,7 @@ import { Icon } from "@/components/icon";
 import { FadeImage } from "@/components/ui/fade-image";
 import type { DoorEvent } from "@/lib/checkins";
 import { isRemote } from "@/lib/poster";
+import { dayKey } from "@/lib/format";
 
 // Which event this door scans for (components/admin/ticket-scanner.tsx): a list of the events with their
 // posters and dates, in หลังบ้าน's own look rather than the browser's grey drop-down. Typing narrows it by name or
@@ -18,11 +19,10 @@ const time = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digi
 
 /** Whether an event day is today in Thai time, or already over */
 function when(iso: string): "today" | "past" | "soon" {
-  const key = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
   const at = new Date(iso);
-  const today = key(new Date());
-  if (key(at) === today) return "today";
-  return key(at) < today ? "past" : "soon";
+  const today = dayKey(new Date());
+  if (dayKey(at) === today) return "today";
+  return dayKey(at) < today ? "past" : "soon";
 }
 
 export function DoorPicker({

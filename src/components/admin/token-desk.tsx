@@ -12,13 +12,13 @@ import { Hint } from "@/components/ui/hint";
 import { shrinkImage } from "@/lib/shrink-image";
 import type { Customer, TopUpEntry } from "@/lib/shops";
 import { slipUrl } from "@/lib/slip-url";
+import { num } from "@/lib/format";
 
 // เติมโทเคน: scan the customer's ticket (each ticket is its own wallet), check the transfer in the banking app (or take
 // cash), type the baht received (what the client's staff read off the slip; the tokens are worked out from the event's
 // token price), optionally photograph the slip for the end-of-event check, confirm. A mistake is undone
 // while the customer still has those tokens; after that ปรับยอด (tokens.adjust) corrects it, below zero if need be.
 
-const num = new Intl.NumberFormat("th-TH");
 const clock = new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 /** Quick amounts at the desk, in baht */
 const QUICK_BAHT = [100, 200, 500, 1000];

@@ -1,3 +1,10 @@
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Whether a value from a form, URL or request is a well-formed UUID (check before putting it in a query) */
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 /**
  * A UUIDv7 (time-ordered, HANDOFF section 7), the same kind Postgres's uuidv7() default makes. For rows
  * written together in one db.batch(), where the child rows need the parent's id before it's inserted.

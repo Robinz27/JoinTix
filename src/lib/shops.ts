@@ -7,7 +7,7 @@ import { auditQuery } from "@/lib/audit";
 import { attendeeName } from "@/lib/event-fields";
 import { lookupTicket } from "@/lib/orders";
 import { can, type AdminAccess } from "@/lib/permissions";
-import { uuidv7 } from "@/lib/uuid";
+import { uuidv7, isUuid } from "@/lib/uuid";
 
 // Tokens at the event: the top-up desk (/admin/tokens) and the shops' tills (/admin/till). A customer is found
 // from the QR on their ticket, the same one the door scans. Server only.
@@ -19,17 +19,16 @@ import { uuidv7 } from "@/lib/uuid";
 // an advisory lock on this ticket; the next till waits there, then counts what's really left. Only หลังบ้าน's
 // correction (adjustTokens) may take a wallet below zero.
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KEY = /^[\w-]{16,80}$/;
 /** The most tokens one top-up can add; a typo shouldn't be able to book a fortune */
-export const MAX_TOPUP = 100_000;
+const MAX_TOPUP = 100_000;
 
 const lockTokens = (ticketId: string) => getDb().execute(sql`select pg_advisory_xact_lock(hashtextextended(${`tokens:${ticketId}`}, 0))`);
 
 const balanceSql = (ticketId: string) => sql`(select coalesce(sum(${tokenTransactions.amount}), 0) from ${tokenTransactions} where ${tokenTransactions.ticketId} = ${ticketId}::uuid)`;
 
 /** A ticket's tokens now */
-export async function tokenBalance(ticketId: string) {
+async function tokenBalance(ticketId: string) {
   const [row] = await getDb()
     .select({ n: sql<number>`coalesce(sum(${tokenTransactions.amount}), 0)`.mapWith(Number) })
     .from(tokenTransactions)
@@ -113,7 +112,7 @@ export async function topUp(input: { scanned: string; eventId: string; tokens: n
 
 /** ยกเลิกการเติม: only while the ticket still has those tokens, and only once */
 export async function undoTopUp(transactionId: string, by: string): Promise<{ error?: string }> {
-  if (!UUID.test(transactionId)) return { error: "ไม่พบรายการนี้" };
+  if (!isUuid(transactionId)) return { error: "ไม่พบรายการนี้" };
   const db = getDb();
   const [top] = await db
     .select()
@@ -278,7 +277,7 @@ export type ShopDetail = {
 };
 
 export async function getShop(id: string): Promise<ShopDetail | null> {
-  if (!UUID.test(id)) return null;
+  if (!isUuid(id)) return null;
   const db = getDb();
   const [row] = await db.select({ shop: shops, event: events }).from(shops).innerJoin(events, eq(events.id, shops.eventId)).where(eq(shops.id, id)).limit(1);
   if (!row) return null;
@@ -301,7 +300,7 @@ export async function getShop(id: string): Promise<ShopDetail | null> {
 
 /** This account's place in a shop, if it has one. Nothing to do with หลังบ้าน's roles */
 export async function shopRole(userId: string, shopId: string): Promise<ShopRole | null> {
-  if (!UUID.test(shopId)) return null;
+  if (!isUuid(shopId)) return null;
   const [row] = await getDb()
     .select({ role: shopStaff.role })
     .from(shopStaff)
@@ -357,7 +356,7 @@ export async function sell(input: { shopId: string; scanned: string; lines: Sale
   const { shopId, scanned, lines, key, by } = input;
   if (!KEY.test(key)) return { error: "คำขอไม่ถูกต้อง สแกนใหม่อีกครั้ง" };
   if (!Array.isArray(lines) || lines.length === 0 || lines.length > 50) return { error: "เลือกรายการก่อน" };
-  if (lines.some((l) => !UUID.test(l?.itemId) || !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 99)) return { error: "จำนวนไม่ถูกต้อง" };
+  if (lines.some((l) => !isUuid(l?.itemId) || !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 99)) return { error: "จำนวนไม่ถูกต้อง" };
   if (new Set(lines.map((l) => l.itemId)).size !== lines.length) return { error: "รายการซ้ำกัน" };
 
   const db = getDb();
@@ -433,7 +432,7 @@ export async function sell(input: { shopId: string; scanned: string; lines: Sale
 
 /** ยกเลิกรายการ: the tokens go back and the report leaves the sale out */
 export async function voidSale(saleId: string, by: string): Promise<{ error?: string }> {
-  if (!UUID.test(saleId)) return { error: "ไม่พบรายการนี้" };
+  if (!isUuid(saleId)) return { error: "ไม่พบรายการนี้" };
   const db = getDb();
   const [sale] = await db
     .select({ tokens: shopSales.tokens, baht: shopSales.baht, eventId: shopSales.eventId, userId: shopSales.userId, createdAt: shopSales.createdAt, shop: shops.name, shopId: shops.id, customer: user.name })

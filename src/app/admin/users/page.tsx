@@ -8,12 +8,12 @@ import { Icon } from "@/components/icon";
 import { getDb } from "@/db";
 import { adminRoles, user } from "@/db/schema";
 import { isSuperAdmin, requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "สมาชิก" };
 
 /** Rows shown at once; search narrows it down */
 const LIMIT = 200;
-const num = new Intl.NumberFormat("th-TH");
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 
 export default async function AdminUsers({ searchParams }: PageProps<"/admin/users">) {
