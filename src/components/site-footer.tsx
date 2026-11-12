@@ -60,7 +60,7 @@ export function SiteFooter() {
           <p className="text-sm text-muted-foreground">
             © <CopyrightYear /> {SITE_NAME}. สงวนลิขสิทธิ์
           </p>
-          <p className="text-sm text-muted-foreground">กดบัตรคอนเสิร์ต อีเวนต์ และงานเลี้ยงรุ่น ไว ไม่มีซ้ำ</p>
+          <p className="text-sm text-muted-foreground">ลงทะเบียนงานเลี้ยงรุ่น ซื้อบัตร เสื้อรุ่น และโทเคนในที่เดียว</p>
         </div>
 
         <nav aria-label="ลิงก์ท้ายเว็บ" className="grid grid-cols-2 gap-x-10 gap-y-8 sm:gap-x-16 lg:grid-cols-3 lg:gap-x-12">

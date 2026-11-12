@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "JoinTix", template: "%s - JoinTix" },
-  description: "กดบัตรคอนเสิร์ต อีเวนต์ และงานเลี้ยงรุ่น ไว ไม่มีซ้ำ",
+  description: "ลงทะเบียนงานเลี้ยงรุ่น ซื้อบัตรและเสื้อรุ่น รับ QR เข้างาน ใช้โทเคนแทนเงินสดในงาน",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

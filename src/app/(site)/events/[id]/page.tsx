@@ -165,6 +165,8 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
               slug={event.slug}
               status={event.status}
               zones={event.zones}
+              merch={event.merch}
+              shippingFee={event.shippingFee}
               maxPerOrder={event.maxPerOrder}
               salesStart={`${dateFormat.format(new Date(event.salesStartAt))} ${timeFormat.format(new Date(event.salesStartAt))} น.`}
             >

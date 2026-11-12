@@ -42,7 +42,8 @@ export function TicketQrButton({
   );
 }
 
-function QrDialog({ secret, code, title, label, used, onClose }: { secret: string; code: string; title: string; label: string; used: boolean; onClose: () => void }) {
+/** `note` replaces the line under the code: the token chip opens it to pay at a shop, not to get in */
+export function QrDialog({ secret, code, title, label, used, note, onClose }: { secret: string; code: string; title: string; label: string; used: boolean; note?: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [svg, setSvg] = useState<string>();
 
@@ -96,7 +97,7 @@ function QrDialog({ secret, code, title, label, used, onClose }: { secret: strin
         </div>
 
         <p className="mt-3 font-mono text-xl font-bold tracking-[0.2em]">{code}</p>
-        <p className="mt-2 text-2xs text-neutral-500">{used ? "บัตรใบนี้ถูกสแกนเข้างานแล้ว ใช้ซ้ำไม่ได้" : "ยื่นให้เจ้าหน้าที่สแกนที่ทางเข้า เพิ่มความสว่างหน้าจอถ้าสแกนไม่ติด"}</p>
+        <p className="mt-2 text-2xs text-neutral-500">{note ?? (used ? "บัตรใบนี้ถูกสแกนเข้างานแล้ว ใช้ซ้ำไม่ได้" : "ยื่นให้เจ้าหน้าที่สแกนที่ทางเข้า เพิ่มความสว่างหน้าจอถ้าสแกนไม่ติด")}</p>
       </div>
     </dialog>
   );

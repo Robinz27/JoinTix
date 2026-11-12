@@ -10,20 +10,43 @@ import {
   UserAdd01Icon,
   UserMultipleIcon,
 } from "@hugeicons/core-free-icons";
-import { Badge, Empty, Initials, PageHeader, Panel, SectionTitle, StatCard } from "@/components/admin/ui";
+import { navFor } from "@/components/admin/admin-nav";
+import { Badge, Empty, Initials, PageHeader, Panel, SectionTitle, StatCard, card, tile } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
 import { listAdminEvents } from "@/lib/admin-events";
-import { requireSuperAdmin } from "@/lib/session";
+import { can } from "@/lib/permissions";
+import { requireStaff } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ภาพรวม" };
 
-const num = new Intl.NumberFormat("th-TH");
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 
 export default async function AdminOverview() {
-  const { user: me } = await requireSuperAdmin();
+  const { user: me, access } = await requireStaff();
+  // Member and sales figures are for those who may see reports; everyone else gets their own menu here
+  if (!can(access, "reports.view")) {
+    const links = navFor(access).flatMap((group) => group.links).filter((link) => link.href !== "/admin");
+    return (
+      <>
+        <PageHeader eyebrow="Dashboard" title={`สวัสดี ${me.name}`} description={`โรลของคุณ: ${access.roleName}`} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className={`${card} flex items-center gap-3 p-4 transition-colors hover:bg-secondary/60`}>
+              <span className={`${tile} size-10`}>
+                <Icon icon={link.icon} className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{link.label}</span>
+              <Icon icon={ArrowRight01Icon} className="size-4 text-muted-foreground" />
+            </Link>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   const db = getDb();
   const [[stats], recent, events] = await Promise.all([
     db
@@ -118,10 +141,10 @@ export default async function AdminOverview() {
               </div>
             ))}
           </dl>
-          <p className="flex gap-2 px-4 py-3.5 text-xs text-muted-foreground sm:px-5">
-            <Icon icon={Ticket02Icon} className="mt-px size-4 shrink-0" />
-            ยอดขาย ออเดอร์ และการชำระเงินจะขึ้นที่นี่เมื่อมีตาราง Orders / Payments
-          </p>
+          <Link href="/admin/reports" className="flex items-center gap-2 px-4 py-3.5 text-xs text-muted-foreground hover:text-foreground sm:px-5">
+            <Icon icon={Ticket02Icon} className="size-4 shrink-0" />
+            ดูยอดขาย ค่าใช้จ่ายร้านค้า และโทเคนแยกตามงานในหน้ารายงาน
+          </Link>
         </Panel>
       </div>
     </>

@@ -4,18 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cancel01Icon, Home01Icon, Logout03Icon, Menu01Icon, ShieldUserIcon } from "@hugeicons/core-free-icons";
-import { ADMIN_NAV } from "@/components/admin/admin-nav";
+import { navFor } from "@/components/admin/admin-nav";
 import { Initials } from "@/components/admin/ui";
 import { useSignOut } from "@/components/account-menu";
 import { Icon } from "@/components/icon";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Hint } from "@/components/ui/hint";
+import type { AdminAccess } from "@/lib/permissions";
 
 /**
  * The frame every หลังบ้าน page sits in, after next.js-shop's back office: a fixed menu on the left on a
  * desktop, and on a phone or tablet a top bar whose button slides the same menu in as a drawer.
  */
-export function AdminShell({ admin, children }: { admin: { name: string; email: string }; children: React.ReactNode }) {
+export function AdminShell({ admin, access, children }: { admin: { name: string; email: string }; access: AdminAccess; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const signOut = useSignOut();
@@ -43,7 +44,7 @@ export function AdminShell({ admin, children }: { admin: { name: string; email: 
         </div>
 
         <nav aria-label="เมนูหลังบ้าน" className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3">
-          {ADMIN_NAV.map((group) => (
+          {navFor(access).map((group) => (
             <div key={group.label} className="mb-2 last:mb-0">
               <p className="px-2 py-1.5 text-2xs font-medium tracking-[0.16em] text-muted-foreground uppercase">{group.label}</p>
               <ul className="mt-0.5 space-y-0.5">
@@ -75,7 +76,7 @@ export function AdminShell({ admin, children }: { admin: { name: string; email: 
             <Initials name={admin.name} className="size-7" />
             <span className="ml-1 min-w-0 flex-1">
               <span className="block truncate text-sm text-foreground">{admin.name}</span>
-              <span className="block text-2xs text-muted-foreground">Super admin</span>
+              <span className="block truncate text-2xs text-muted-foreground">{access.roleName}</span>
             </span>
             <Hint label="กลับหน้าเว็บ">
               <Link href="/" aria-label="กลับหน้าเว็บ" className={footerButton}>

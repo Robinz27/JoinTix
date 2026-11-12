@@ -44,7 +44,7 @@ async function Profile({ searchParams }: Pick<PageProps<"/profile">, "searchPara
 
   return (
     <main className="flex flex-1 justify-center px-3 pt-8 pb-16 sm:pt-10">
-      <div className="stagger w-full max-w-xl space-y-4">
+      <div className="stagger w-full min-w-0 max-w-xl space-y-4">
         <header className="flex items-center gap-3">
           <span className="grid size-14 shrink-0 place-items-center rounded-full bg-primary text-xl font-semibold text-primary-foreground">
             {[...user.name.trim()][0]?.toUpperCase() ?? "?"}
@@ -66,6 +66,9 @@ async function Profile({ searchParams }: Pick<PageProps<"/profile">, "searchPara
             </Row>
             <Row icon={Call02Icon} label="เบอร์โทร">
               {user.phone}
+            </Row>
+            <Row icon={UserCircleIcon} label="รุ่น">
+              {(user as { cohort?: string }).cohort || <span className="text-muted-foreground">ไม่ได้ระบุ</span>}
             </Row>
             <Row icon={Calendar03Icon} label="สมัครเมื่อ">
               {dateFormat.format(user.createdAt)}

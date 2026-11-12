@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useId, useState } from "react";
 import {
+  ArrowRight01Icon,
   ComputerIcon,
   Delete02Icon,
   Loading03Icon,
@@ -10,6 +11,7 @@ import {
   SecurityCheckIcon,
   SmartPhone01Icon,
 } from "@hugeicons/core-free-icons";
+import Link from "next/link";
 import { deleteMember, memberSessions, signOutMember, updateMember, type MemberSession } from "@/app/actions/admin";
 import { AdminDialog } from "@/components/admin/dialog";
 import { Choices, Notice, label } from "@/components/admin/form";
@@ -26,10 +28,15 @@ export type Member = {
   name: string;
   email: string;
   phone: string;
+  cohort: string;
   role: string;
+  adminRoleId: string | null;
   emailVerified: boolean;
   createdAt: string;
 };
+
+/** The roles a super admin can give; undefined for anyone else, who doesn't see the choice */
+export type RoleOption = { id: string; name: string };
 
 const when = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 
@@ -47,7 +54,7 @@ function Actions({ pending, submitLabel, onCancel }: { pending: boolean; submitL
   );
 }
 
-function EditDialog({ member, self, onClose }: { member: Member; self: boolean; onClose: () => void }) {
+function EditDialog({ member, self, roles, onClose }: { member: Member; self: boolean; roles?: RoleOption[]; onClose: () => void }) {
   const [state, action, pending] = useActionState(updateMember, {});
   const ids = useId();
 
@@ -76,6 +83,12 @@ function EditDialog({ member, self, onClose }: { member: Member; self: boolean; 
             </label>
             <input id={`${ids}-phone`} name="phone" inputMode="tel" required pattern="0[0-9\s\-]{8,11}" defaultValue={member.phone} className={input} />
           </div>
+          <div>
+            <label htmlFor={`${ids}-cohort`} className={label}>
+              รุ่น / ปีที่จบ
+            </label>
+            <input id={`${ids}-cohort`} name="cohort" maxLength={60} defaultValue={member.cohort} placeholder="ไม่ได้ระบุ" className={input} />
+          </div>
         </div>
 
         <fieldset>
@@ -91,23 +104,28 @@ function EditDialog({ member, self, onClose }: { member: Member; self: boolean; 
           <p className="mt-1.5 text-2xs text-muted-foreground">ยืนยันแล้ว = ซื้อบัตรได้เลยโดยไม่ต้องกรอกรหัสยืนยัน</p>
         </fieldset>
 
-        {self ? (
+        {self && roles ? (
           <p className="rounded-xl border border-border bg-background/40 px-3.5 py-2.5 text-2xs text-muted-foreground">
             สิทธิ์: Super admin · เปลี่ยนสิทธิ์ของตัวเองไม่ได้ เพื่อไม่ให้หลังบ้านไม่เหลือใครเข้าได้
           </p>
         ) : (
-          <fieldset>
-            <legend className={label}>สิทธิ์</legend>
-            <Choices
-              name="role"
-              value={member.role}
-              options={[
-                { value: "user", label: "สมาชิก" },
-                { value: "super_admin", label: "Super admin" },
-              ]}
-            />
-            <p className="mt-1.5 text-2xs text-muted-foreground">Super admin เข้าหลังบ้านและแก้ไขสมาชิกทุกคนได้</p>
-          </fieldset>
+          roles && (
+            <fieldset>
+              <legend className={label}>สิทธิ์</legend>
+              <Choices
+                name="role"
+                value={member.adminRoleId ?? member.role}
+                options={[
+                  { value: "user", label: "สมาชิก" },
+                  ...roles.map((role) => ({ value: role.id, label: role.name })),
+                  { value: "super_admin", label: "Super admin" },
+                ]}
+              />
+              <p className="mt-1.5 text-2xs text-muted-foreground">
+                โรลกำหนดว่าเข้าหลังบ้านส่วนไหนได้ (สร้างโรลเพิ่มที่เมนูสิทธิ์ทีมงาน) Super admin ทำได้ทุกอย่าง
+              </p>
+            </fieldset>
+          )
         )}
 
         <div>
@@ -240,7 +258,7 @@ function DevicesDialog({ member, onClose }: { member: Member; onClose: () => voi
   );
 }
 
-function DeleteDialog({ member, onClose }: { member: Member; onClose: () => void }) {
+function DeleteDialog({ member, detail = false, onClose }: { member: Member; detail?: boolean; onClose: () => void }) {
   const [state, action, pending] = useActionState(deleteMember, {});
   const ids = useId();
 
@@ -248,6 +266,7 @@ function DeleteDialog({ member, onClose }: { member: Member; onClose: () => void
     <AdminDialog onClose={onClose} done={Boolean(state.ok)} danger icon={Delete02Icon} title={`ลบ ${member.name}`} subtitle="ลบถาวร ย้อนกลับไม่ได้">
       <form action={action}>
         <input type="hidden" name="userId" value={member.id} />
+        {detail && <input type="hidden" name="from" value="detail" />}
         <Notice state={state} />
         <p className="mb-3 text-sm text-muted-foreground">
           บัญชี รหัสผ่าน และการเข้าสู่ระบบทุกเครื่องของบัญชีนี้จะถูกลบ เจ้าของต้องสมัครใหม่ถ้าจะกลับมาใช้
@@ -276,15 +295,68 @@ function DeleteDialog({ member, onClose }: { member: Member; onClose: () => void
 
 type Opened = "edit" | "devices" | "delete" | null;
 
-export function MemberActions({ member, self }: { member: Member; self: boolean }) {
+const LOCKED = "บัญชีทีมงานแก้ได้เฉพาะ Super admin";
+
+export function MemberActions({
+  member,
+  self,
+  roles,
+  locked = false,
+  view = false,
+  detail = false,
+}: {
+  member: Member;
+  self: boolean;
+  roles?: RoleOption[];
+  locked?: boolean;
+  /** A link to the member's own page (on the list) */
+  view?: boolean;
+  /**
+   * On the member's own page: buttons with words, แก้ไขข้อมูล and a red ลบบัญชี set apart, since there's room and
+   * nothing else on the page needs telling apart. Devices are a tab there. Deleting goes back to the list.
+   */
+  detail?: boolean;
+}) {
   const [opened, setOpened] = useState<Opened>(null);
   const close = () => setOpened(null);
   const danger = "hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-500 disabled:hover:border-border disabled:hover:bg-transparent disabled:hover:text-muted-foreground";
+  const cantDelete = locked ? LOCKED : self ? "ลบบัญชีของตัวเองไม่ได้" : undefined;
   const buttons: { key: Exclude<Opened, null>; icon: IconSvgElement; label: string; disabled?: string; danger?: boolean }[] = [
-    { key: "edit", icon: PencilEdit02Icon, label: "แก้ไข" },
-    { key: "devices", icon: SecurityCheckIcon, label: "อุปกรณ์" },
-    { key: "delete", icon: Delete02Icon, label: "ลบบัญชี", danger: true, disabled: self ? "ลบบัญชีของตัวเองไม่ได้" : undefined },
+    { key: "edit", icon: PencilEdit02Icon, label: "แก้ไข", disabled: locked ? LOCKED : undefined },
+    { key: "devices", icon: SecurityCheckIcon, label: "อุปกรณ์", disabled: locked ? LOCKED : undefined },
+    { key: "delete", icon: Delete02Icon, label: "ลบบัญชี", danger: true, disabled: cantDelete },
   ];
+  const dialogs = (
+    <>
+      {opened === "edit" && <EditDialog member={member} self={self} roles={roles} onClose={close} />}
+      {opened === "devices" && <DevicesDialog member={member} onClose={close} />}
+      {opened === "delete" && <DeleteDialog member={member} detail={detail} onClose={close} />}
+    </>
+  );
+
+  if (detail)
+    return (
+      <div className="flex w-full flex-wrap items-center justify-end gap-2">
+        <Hint label={locked ? LOCKED : undefined} className="max-sm:min-w-[8rem] max-sm:flex-1">
+          <button type="button" disabled={locked} onClick={() => setOpened("edit")} className={`${pill} whitespace-nowrap max-sm:w-full max-sm:justify-center`}>
+            <Icon icon={PencilEdit02Icon} className="size-4" />
+            แก้ไขข้อมูล
+          </button>
+        </Hint>
+        <Hint label={cantDelete} className="max-sm:min-w-[8rem] max-sm:flex-1">
+          <button
+            type="button"
+            disabled={Boolean(cantDelete)}
+            onClick={() => setOpened("delete")}
+            className={`${pill} whitespace-nowrap text-red-600 hover:border-red-500/40 hover:bg-red-500/10 disabled:text-muted-foreground disabled:hover:bg-transparent max-sm:w-full max-sm:justify-center dark:text-red-400`}
+          >
+            <Icon icon={Delete02Icon} className="size-4" />
+            ลบบัญชี
+          </button>
+        </Hint>
+        {dialogs}
+      </div>
+    );
 
   return (
     <div className="flex items-center justify-end gap-1.5">
@@ -295,16 +367,20 @@ export function MemberActions({ member, self }: { member: Member; self: boolean 
             disabled={Boolean(b.disabled)}
             onClick={() => setOpened(b.key)}
             aria-label={`${b.label} ${member.name}`}
-            className={`${iconButton} ${b.danger ? danger : ""}`}
+            className={`${iconButton} ${b.danger ? danger : ""} max-sm:hidden`}
           >
             <Icon icon={b.icon} className="size-4" />
           </button>
         </Hint>
       ))}
-
-      {opened === "edit" && <EditDialog member={member} self={self} onClose={close} />}
-      {opened === "devices" && <DevicesDialog member={member} onClose={close} />}
-      {opened === "delete" && <DeleteDialog member={member} onClose={close} />}
+      {view && (
+        <Hint label="ดูข้อมูลทั้งหมด">
+          <Link href={`/admin/users/${encodeURIComponent(member.id)}`} aria-label={`ดูข้อมูลของ ${member.name}`} className={iconButton}>
+            <Icon icon={ArrowRight01Icon} className="size-4" />
+          </Link>
+        </Hint>
+      )}
+      {dialogs}
     </div>
   );
 }

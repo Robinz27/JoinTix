@@ -1,51 +1,56 @@
 import type { Metadata } from "next";
-import { count, desc, ilike, or, sql } from "drizzle-orm";
+import Link from "next/link";
+import { asc, count, desc, ilike, or, sql } from "drizzle-orm";
 import { CheckmarkBadge01Icon, Search01Icon, ShieldUserIcon, UserMultipleIcon } from "@hugeicons/core-free-icons";
 import { MemberActions } from "@/components/admin/member-actions";
 import { Badge, Empty, Initials, MiniStat, PageHeader, card, input, td, tdMain, tdTight, th } from "@/components/admin/ui";
 import { Icon } from "@/components/icon";
 import { getDb } from "@/db";
-import { user } from "@/db/schema";
-import { isSuperAdmin, requireSuperAdmin } from "@/lib/session";
+import { adminRoles, user } from "@/db/schema";
+import { isSuperAdmin, requirePermission } from "@/lib/session";
+import { num } from "@/lib/format";
 
 export const metadata: Metadata = { title: "สมาชิก" };
 
 /** Rows shown at once; search narrows it down */
 const LIMIT = 200;
-const num = new Intl.NumberFormat("th-TH");
 const dateFormat = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "2-digit", timeZone: "Asia/Bangkok" });
 
 export default async function AdminUsers({ searchParams }: PageProps<"/admin/users">) {
-  const { user: me } = await requireSuperAdmin("/admin/users");
+  const { user: me, access } = await requirePermission("members.manage", "/admin/users");
   const { q } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
   // Escaped, so a % or _ typed in the box matches itself
   const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
 
   const db = getDb();
-  const [members, [totals]] = await Promise.all([
+  const [members, [totals], roles] = await Promise.all([
     db
       .select({
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
+        cohort: user.cohort,
         role: user.role,
+        adminRoleId: user.adminRoleId,
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
       })
       .from(user)
-      .where(query ? or(ilike(user.name, pattern), ilike(user.email, pattern), ilike(user.phone, pattern)) : undefined)
+      .where(query ? or(ilike(user.name, pattern), ilike(user.email, pattern), ilike(user.phone, pattern), ilike(user.cohort, pattern)) : undefined)
       .orderBy(desc(user.createdAt))
       .limit(LIMIT),
     db
       .select({
         total: count(),
         verified: sql<number>`count(*) filter (where ${user.emailVerified})`.mapWith(Number),
-        admins: sql<number>`count(*) filter (where ${user.role} = 'super_admin')`.mapWith(Number),
+        admins: sql<number>`count(*) filter (where ${user.role} = 'super_admin' or ${user.adminRoleId} is not null)`.mapWith(Number),
       })
       .from(user),
+    db.select({ id: adminRoles.id, name: adminRoles.name }).from(adminRoles).orderBy(asc(adminRoles.createdAt)),
   ]);
+  const roleName = (id: string | null) => roles.find((role) => role.id === id)?.name;
 
   return (
     <>
@@ -63,7 +68,7 @@ export default async function AdminUsers({ searchParams }: PageProps<"/admin/use
       <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
         <MiniStat icon={UserMultipleIcon} label="ทั้งหมด" value={num.format(totals.total)} />
         <MiniStat icon={CheckmarkBadge01Icon} label="ยืนยันอีเมล" value={num.format(totals.verified)} />
-        <MiniStat icon={ShieldUserIcon} label="Super admin" value={num.format(totals.admins)} />
+        <MiniStat icon={ShieldUserIcon} label="ทีมงาน" value={num.format(totals.admins)} />
       </div>
 
       <section className={`${card} overflow-hidden`}>
@@ -86,7 +91,7 @@ export default async function AdminUsers({ searchParams }: PageProps<"/admin/use
             </thead>
             <tbody className="divide-y divide-border">
               {members.map((member) => {
-                const admin = isSuperAdmin(member);
+                const staff = isSuperAdmin(member) ? "Super admin" : roleName(member.adminRoleId);
                 const self = member.id === me.id;
                 return (
                   <tr key={member.id} className="transition-colors hover:bg-secondary/40">
@@ -94,14 +99,14 @@ export default async function AdminUsers({ searchParams }: PageProps<"/admin/use
                       <div className="flex min-w-0 items-center gap-3">
                         <Initials name={member.name} className="size-9 max-[359px]:hidden" />
                         <div className="min-w-0">
-                          <p className="truncate text-foreground">
+                          <Link href={`/admin/users/${member.id}`} className="block truncate font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground">
                             {member.name}
                             {self && <span className="text-muted-foreground"> (คุณ)</span>}
-                          </p>
+                          </Link>
                           {/* The role column is hidden on a phone; an admin still stands out */}
-                          {admin && (
+                          {staff && (
                             <span className="sm:hidden">
-                              <Badge tone="strong">Super admin</Badge>
+                              <Badge tone="strong">{staff}</Badge>
                             </span>
                           )}
                           <p className="truncate text-xs text-muted-foreground">{member.email}</p>
@@ -119,7 +124,7 @@ export default async function AdminUsers({ searchParams }: PageProps<"/admin/use
                     </td>
                     <td className={`${td} hidden text-muted-foreground tabular-nums lg:table-cell`}>{dateFormat.format(member.createdAt)}</td>
                     <td className={`${td} hidden sm:table-cell`}>
-                      {admin ? <Badge tone="strong">Super admin</Badge> : <Badge>สมาชิก</Badge>}
+                      {staff ? <Badge tone="strong">{staff}</Badge> : <Badge>สมาชิก</Badge>}
                     </td>
                     <td className={`${tdTight} text-right`}>
                       <MemberActions
@@ -128,11 +133,16 @@ export default async function AdminUsers({ searchParams }: PageProps<"/admin/use
                           name: member.name,
                           email: member.email,
                           phone: member.phone,
+                          cohort: member.cohort,
                           role: member.role,
+                          adminRoleId: member.adminRoleId,
                           emailVerified: member.emailVerified,
                           createdAt: member.createdAt.toISOString(),
                         }}
                         self={self}
+                        roles={access.superAdmin ? roles : undefined}
+                        locked={!access.superAdmin && Boolean(staff)}
+                        view
                       />
                     </td>
                   </tr>

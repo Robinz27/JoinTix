@@ -4,7 +4,7 @@ import { useActionState, useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { Copy01Icon, Delete02Icon, LinkSquare02Icon, Loading03Icon, PencilEdit02Icon, UserCheck01Icon } from "@hugeicons/core-free-icons";
 import { deleteEvent, duplicateEvent } from "@/app/actions/admin-events";
-import type { AdminFormState } from "@/app/actions/admin";
+import type { AdminFormState } from "@/lib/form";
 import { AdminDialog } from "@/components/admin/dialog";
 import { Notice, label } from "@/components/admin/form";
 import { iconButton, input, pill } from "@/components/admin/ui";

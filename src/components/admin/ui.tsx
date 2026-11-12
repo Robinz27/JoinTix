@@ -166,9 +166,10 @@ export function Initials({ name, className = "size-9" }: { name: string; classNa
   );
 }
 
-export function Badge({ tone = "muted", children }: { tone?: "muted" | "good" | "warn" | "strong"; children: React.ReactNode }) {
+export function Badge({ tone = "muted", children }: { tone?: "muted" | "good" | "warn" | "strong" | "danger"; children: React.ReactNode }) {
   const tones = {
     muted: "bg-secondary text-muted-foreground",
+    danger: "bg-red-500/10 text-red-700 dark:text-red-400",
     good: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     warn: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     strong: "bg-primary text-primary-foreground",

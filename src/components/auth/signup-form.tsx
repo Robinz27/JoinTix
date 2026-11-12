@@ -57,6 +57,10 @@ export function SignupForm({ next }: { next: string }) {
             )}
           </Field>
 
+          <Field label="รุ่น / ปีที่จบ (ถ้ามี)">
+            {(id) => <TextInput id={id} name="cohort" defaultValue={state.cohort} placeholder="วิศวะ รุ่น 60 หรือ 2548" maxLength={60} autoComplete="off" />}
+          </Field>
+
           <Field label="รหัสผ่าน" hint="(อย่างน้อย 8 ตัวอักษร)">
             {(id) => <PasswordInput id={id} name="password" placeholder="รหัสผ่าน" autoComplete="new-password" required minLength={8} />}
           </Field>

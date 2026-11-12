@@ -3,11 +3,16 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { APIError } from "better-auth/api";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { user } from "@/db/schema";
+import { actorById, audit } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { safeNext } from "@/lib/session";
+import { formText } from "@/lib/form";
 
 export type LoginState = { error?: string; email?: string };
-export type SignupState = { error?: string; name?: string; email?: string; phone?: string };
+export type SignupState = { error?: string; name?: string; email?: string; phone?: string; cohort?: string };
 export type ForgotState = { error?: string; sentTo?: string };
 export type ResetState = { error?: string };
 
@@ -32,10 +37,9 @@ function messageFor(error: unknown) {
   return "ระบบขัดข้อง ลองใหม่อีกครั้ง";
 }
 
-const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 export async function signIn(_: LoginState, form: FormData): Promise<LoginState> {
-  const email = text(form, "email").toLowerCase();
+  const email = formText(form, "email").toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!email || !password) return { error: "กรอกอีเมลและรหัสผ่าน", email };
 
@@ -45,26 +49,38 @@ export async function signIn(_: LoginState, form: FormData): Promise<LoginState>
       headers: await headers(),
     });
   } catch (error) {
+    // Who was tried, never the password typed
+    const [known] = await getDb().select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
+    const code = error instanceof APIError ? ((error.body as { code?: string } | undefined)?.code ?? String(error.status)) : "ERROR";
+    await audit({
+      action: "auth.login_failed",
+      actor: known ? await actorById(known.id) : null,
+      target: { type: "user", id: known?.id ?? "", label: email },
+      subjectUserId: known?.id,
+      details: { email, reason: code, accountExists: Boolean(known) },
+    });
     return { error: messageFor(error), email };
   }
   redirect(safeNext(form.get("next")));
 }
 
 export async function signUp(_: SignupState, form: FormData): Promise<SignupState> {
-  const name = text(form, "name");
-  const email = text(form, "email").toLowerCase();
+  const name = formText(form, "name");
+  const email = formText(form, "email").toLowerCase();
   // Dashes and spaces are fine to type; the number is kept as digits only
-  const phone = text(form, "phone").replace(/[\s-]/g, "");
+  const phone = formText(form, "phone").replace(/[\s-]/g, "");
+  const cohort = formText(form, "cohort").replace(/\s+/g, " ");
   const password = String(form.get("password") ?? "");
-  const back = { name, email, phone };
+  const back = { name, email, phone, cohort };
 
   if (name.length < 2) return { ...back, error: "กรอกชื่อ-นามสกุลอย่างน้อย 2 ตัวอักษร" };
   if (!/^0\d{8,9}$/.test(phone)) return { ...back, error: "เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก ขึ้นต้นด้วย 0" };
+  if (cohort.length > 60) return { ...back, error: "รุ่นยาวเกิน 60 ตัวอักษร" };
   if (password.length < 8) return { ...back, error: MESSAGES.PASSWORD_TOO_SHORT };
   if (password !== String(form.get("confirm") ?? "")) return { ...back, error: "รหัสผ่านทั้งสองช่องไม่ตรงกัน" };
 
   try {
-    await auth.api.signUpEmail({ body: { name, email, password, phone }, headers: await headers() });
+    await auth.api.signUpEmail({ body: { name, email, password, phone, cohort }, headers: await headers() });
   } catch (error) {
     return { ...back, error: messageFor(error) };
   }
@@ -76,7 +92,7 @@ export async function signUp(_: SignupState, form: FormData): Promise<SignupStat
  * has an account, so the form can't be used to find out who has one.
  */
 export async function requestPasswordReset(_: ForgotState, form: FormData): Promise<ForgotState> {
-  const email = text(form, "email").toLowerCase();
+  const email = formText(form, "email").toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: MESSAGES.INVALID_EMAIL };
 
   try {
@@ -95,10 +111,17 @@ export async function resetPassword(_: ResetState, form: FormData): Promise<Rese
   if (password.length < 8) return { error: MESSAGES.PASSWORD_TOO_SHORT };
   if (password !== String(form.get("confirm") ?? "")) return { error: "รหัสผ่านทั้งสองช่องไม่ตรงกัน" };
 
+  // Whose link it is, read before it's used up: the log names the account, never the token
+  const ctx = await auth.$context;
+  const userId = (await ctx.internalAdapter.findVerificationValue(`reset-password:${token}`).catch(() => null))?.value ?? null;
   try {
     await auth.api.resetPassword({ body: { newPassword: password, token }, headers: await headers() });
   } catch (error) {
     return { error: messageFor(error) };
+  }
+  if (userId) {
+    const actor = await actorById(userId);
+    await audit({ action: "auth.password_reset", actor, target: { type: "user", id: userId, label: actor?.email ?? "" }, subjectUserId: userId, details: { allDevicesSignedOut: true } });
   }
   redirect("/login?reset=1");
 }
