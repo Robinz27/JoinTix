@@ -183,6 +183,28 @@ export async function searchEvents(query: string): Promise<EventSummary[]> {
   return rows.map((row) => summarize(row, zones.get(row.id) ?? []));
 }
 
+/** One event on the /events page: the card, plus what the page's search box also looks at */
+export type EventListItem = EventSummary & { venueArea: string; organizer: string };
+
+/**
+ * Every event on the site for /events. Still on sale or coming up first, soonest first; then closed and
+ * sold-out ones, most recent first, so last month's event isn't the first thing anyone sees.
+ */
+export async function getAllEvents(): Promise<EventListItem[]> {
+  "use cache";
+  cacheTag(EVENTS_TAG);
+  cacheLife("minutes");
+  const rows = await getDb()
+    .select()
+    .from(events)
+    .where(inArray(events.status, ["published", "closed"]))
+    .orderBy(asc(events.startsAt));
+  const zones = await zonesOf(rows.map((row) => row.id));
+  const list = rows.map((row) => ({ ...summarize(row, zones.get(row.id) ?? []), venueArea: row.venueArea, organizer: row.organizer }));
+  const over = (e: EventListItem) => e.status === "closed" || e.status === "sold-out";
+  return [...list.filter((e) => !over(e)), ...list.filter(over).reverse()];
+}
+
 /** Every slug on the site, for generateStaticParams */
 export async function getEventSlugs(): Promise<string[]> {
   "use cache";

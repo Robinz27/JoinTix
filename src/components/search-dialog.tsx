@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight01Icon,
+  Calendar03Icon,
   Home01Icon,
   Loading03Icon,
   Login03Icon,
@@ -32,6 +33,7 @@ const PAGES: PageLink[] = [
   { href: "/tickets", label: "บัตรของฉัน", hint: "บัตรที่ซื้อแล้ว และ QR เข้างาน", icon: Ticket01Icon, words: "tickets ticket บัตร ตั๋ว qr คิวอาร์ คำสั่งซื้อ order" },
   { href: "/profile", label: "ข้อมูลบัญชี", hint: "โทเคนคงเหลือ และยืนยันอีเมล", icon: UserCircleIcon, words: "profile account บัญชี โปรไฟล์ โทเคน token อีเมล email" },
   { href: "/", label: "หน้าแรก", hint: "อีเวนต์แนะนำ", icon: Home01Icon, words: "home หน้าแรก" },
+  { href: "/events", label: "อีเวนต์ทั้งหมด", hint: "ค้นหาและกรองตามสถานะการขาย", icon: Calendar03Icon, words: "events event อีเวนต์ งาน ทั้งหมด คอนเสิร์ต งานเลี้ยงรุ่น" },
   { href: "/login", label: "เข้าสู่ระบบ", hint: "", icon: Login03Icon, words: "login signin เข้าสู่ระบบ ล็อกอิน" },
   { href: "/register", label: "สมัครสมาชิก", hint: "", icon: UserAdd01Icon, words: "register signup สมัคร" },
   { href: "/forgot-password", label: "ลืมรหัสผ่าน", hint: "ตั้งรหัสใหม่ทางอีเมล", icon: Login03Icon, words: "forgot password reset ลืม รหัสผ่าน" },

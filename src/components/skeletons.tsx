@@ -57,6 +57,27 @@ export function EventCardSkeleton() {
   );
 }
 
+/** The /events page's list: search box, filter chips and a grid of cards (components/event-browser.tsx) */
+export function EventsGridSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Skeleton className="h-10 w-full rounded-full sm:flex-1" />
+        <div className="flex flex-wrap gap-1.5">
+          {[16, 16, 20, 28].map((w, i) => (
+            <Skeleton key={i} className="h-8 rounded-full" style={{ width: `${w * 0.25}rem` }} />
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+        {Array.from({ length: 8 }, (_, i) => (
+          <EventCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Recommended events section: header row and four cards */
 export function EventsSkeleton() {
   return (
