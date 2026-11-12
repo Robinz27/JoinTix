@@ -20,8 +20,13 @@ const auditFromAuth = (entry: AuditEntry) => void audit(entry);
  */
 export const auth = betterAuth({
   // The quick tunnel to the dev server (next.config.ts), so signing out and verifying an email work through it.
-  // Dev only: on a real deployment anyone can get a trycloudflare.com address
-  trustedOrigins: process.env.NODE_ENV === "development" ? ["https://*.trycloudflare.com"] : [],
+  // Dev only: on a real deployment anyone can get a trycloudflare.com address.
+  // TRUSTED_ORIGINS in .env.local (comma separated, e.g. https://jointix.4tunez.cloud) adds the site's own
+  // domains when it's served from somewhere other than BETTER_AUTH_URL, such as a named Cloudflare tunnel
+  trustedOrigins: [
+    ...(process.env.NODE_ENV === "development" ? ["https://*.trycloudflare.com"] : []),
+    ...(process.env.TRUSTED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean),
+  ],
   database: drizzleAdapter(getDb(), {
     provider: "pg",
     schema,

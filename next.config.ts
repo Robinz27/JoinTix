@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["*.trycloudflare.com"],
   experimental: {
     serverActions: {
-      allowedOrigins: ["*.trycloudflare.com"],
+      // plus the hosts in TRUSTED_ORIGINS (.env.local, see src/lib/auth.ts), e.g. a named tunnel's domain
+      allowedOrigins: [
+        "*.trycloudflare.com",
+        ...(process.env.TRUSTED_ORIGINS ?? "").split(",").map((o) => o.trim().replace(/^https?:\/\//, "")).filter(Boolean),
+      ],
       // A poster comes up with the event form (lib/uploads.ts takes up to 10 MB; the browser shrinks it first)
       bodySizeLimit: "11mb",
     },

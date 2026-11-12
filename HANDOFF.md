@@ -152,6 +152,9 @@ RESEND_API_KEY='re_...'
 EMAIL_FROM='JoinTix <onboarding@resend.dev>'
 # ไม่บังคับ: ตรวจสลิปอัตโนมัติด้วย Slip2Go (slip2go.com) ไม่ใส่ = ทีมงานตรวจสลิปเองทุกใบที่ /admin/payments
 SLIP2GO_KEY='...'
+# ไม่บังคับ: โดเมนอื่นที่เปิดเว็บนี้ได้นอกจาก BETTER_AUTH_URL (คั่นด้วย ,) เช่น Cloudflare named tunnel
+# ไม่ใส่ = ล็อกอิน/server action จากโดเมนนั้นจะโดนปฏิเสธ (quick tunnel *.trycloudflare.com ใช้ได้เฉพาะ npm run dev)
+TRUSTED_ORIGINS='https://jointix.4tunez.cloud'
 ```
 
 > `.env.local` ถูก git ignore ไว้ จะไม่ขึ้น repo — อย่าเปลี่ยนชื่อไฟล์เป็นอย่างอื่น
