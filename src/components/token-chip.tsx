@@ -84,10 +84,10 @@ export function TokenChip({ compact = false }: { compact?: boolean }) {
         } ${
           owing
             ? "border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
-            : "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+            : "border-border bg-card text-foreground hover:bg-secondary"
         }`}
       >
-        <Icon icon={Coins01Icon} className="size-4 shrink-0" />
+        <Icon icon={Coins01Icon} className={`size-4 shrink-0 ${owing ? "" : "text-muted-foreground"}`} />
         {num.format(wallet.total)}
       </button>
 
@@ -118,7 +118,7 @@ export function TokenChip({ compact = false }: { compact?: boolean }) {
 
           <div className="px-3 py-2">
             <p className="truncate text-xs text-muted-foreground">โทเคนรวม · {wallet.title}</p>
-            <p className={`mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums ${owing ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+            <p className={`mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums ${owing ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
               <Icon icon={Coins01Icon} className="size-4" />
               {num.format(wallet.total)}
             </p>

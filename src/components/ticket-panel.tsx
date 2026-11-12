@@ -131,7 +131,7 @@ export function TicketPanel({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-foreground">{z.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">{z.note}</span>
-                {z.tokens > 0 && <span className="mt-0.5 block text-2xs font-medium text-amber-600 dark:text-amber-400">+{num.format(z.tokens)} โทเคน / ใบ</span>}
+                {z.tokens > 0 && <span className="mt-0.5 block text-2xs font-medium text-muted-foreground">+{num.format(z.tokens)} โทเคน / ใบ</span>}
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-sm font-medium text-foreground">{price(z.price)}</span>
@@ -207,7 +207,7 @@ export function TicketPanel({
               </div>
             )}
             {zone && zone.tokens > 0 && tickets > 0 && (
-              <div className="flex justify-between text-amber-600 dark:text-amber-400">
+              <div className="flex justify-between text-muted-foreground">
                 <span>ได้รับโทเคน (ใบละ {num.format(zone.tokens)})</span>
                 <span className="tabular-nums">+{num.format(zone.tokens * tickets)}</span>
               </div>

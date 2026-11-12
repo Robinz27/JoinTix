@@ -105,7 +105,7 @@ export function CheckoutPanel({
   if (status === "review") {
     return (
       <section className="rounded-2xl border border-border bg-card p-4 text-center sm:p-5">
-        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-secondary text-foreground">
           <Icon icon={Clock01Icon} className="size-6" />
         </span>
         <p className="mt-3 text-base font-semibold text-foreground">ได้รับสลิปแล้ว กำลังตรวจสอบ</p>

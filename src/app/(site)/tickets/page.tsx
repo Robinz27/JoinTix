@@ -56,19 +56,38 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
           </p>
         )}
 
-        {open.map((order) => (
-          <Link
-            key={order.id}
-            href={`/checkout/${order.id}`}
-            className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 transition-colors hover:bg-amber-500/15 dark:text-amber-200"
-          >
-            <Icon icon={Clock01Icon} className="size-4 shrink-0" />
-            <span className="min-w-0 flex-1">
-              <b className="font-medium">{order.status === "review" ? "รอตรวจสลิป" : "รอชำระเงิน"}</b> · {order.title} ({order.code}) {bahtOrFree(order.total)}
-            </span>
-            <Icon icon={ArrowRight01Icon} className="size-4 shrink-0" />
-          </Link>
-        ))}
+        {open.map((order) => {
+          const review = order.status === "review";
+          return (
+            <Link
+              key={order.id}
+              href={`/checkout/${order.id}`}
+              className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition-colors hover:border-muted-foreground sm:p-4"
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-foreground">
+                <Icon icon={Clock01Icon} className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-2xs font-medium text-muted-foreground">
+                  <span aria-hidden="true" className="relative flex size-1.5">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/40 motion-reduce:hidden" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-foreground" />
+                  </span>
+                  {review ? "รอตรวจสลิป" : "รอชำระเงิน"}
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-foreground">{order.title}</span>
+                <span className="block text-2xs text-muted-foreground">
+                  <span className="font-mono tracking-wide">{order.code}</span> · <span className="tabular-nums">{bahtOrFree(order.total)}</span>
+                </span>
+              </span>
+              <span className="hidden h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-medium text-primary-foreground transition-colors group-hover:bg-primary-hover min-[400px]:flex">
+                {review ? "ดูสถานะ" : "ชำระเงิน"}
+                <Icon icon={ArrowRight01Icon} className="size-3.5" />
+              </span>
+              <Icon icon={ArrowRight01Icon} className="size-4 shrink-0 text-muted-foreground min-[400px]:hidden" />
+            </Link>
+          );
+        })}
 
         {groups.length === 0 ? (
           <section className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
@@ -109,7 +128,7 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
                   <Fact label="ประเภทบัตร">{group.zone?.name ?? "ไม่ซื้อบัตร"}</Fact>
                   <Fact label="ยอดชำระ">{group.merch.length ? bahtOrFree(group.total) : `${group.quantity} × ${bahtOrFree(group.unitPrice)} = ${bahtOrFree(group.total)}`}</Fact>
                   <Fact label="โทเคนรวมงานนี้">
-                    <span className="text-amber-600 dark:text-amber-400">{num.format(balance)}</span>
+                    <span className="font-medium text-foreground">{num.format(balance)}</span>
                   </Fact>
                 </dl>
 
@@ -159,7 +178,7 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
                           <p className="truncate text-sm font-medium text-foreground">{attendeeName(ticket.attendee)}</p>
                           <p className="text-2xs text-muted-foreground">
                             ใบที่ {ticket.seq} · <span className="font-mono tracking-wider">{ticket.code}</span> ·{" "}
-                            <span className="text-amber-600 dark:text-amber-400">{num.format(ticket.tokens)} โทเคน</span>
+                            <span className="font-medium text-foreground">{num.format(ticket.tokens)} โทเคน</span>
                           </p>
                           <p className="text-2xs text-muted-foreground">
                             {used && ticket.checkedInAt ? `เข้างานแล้ว ${when.format(new Date(ticket.checkedInAt))}` : ticket.status === "void" ? "ยกเลิกแล้ว" : "พร้อมใช้เข้างาน"}
@@ -196,9 +215,9 @@ async function Tickets({ searchParams }: Pick<PageProps<"/tickets">, "searchPara
 
 function TokenPill({ total }: { total: number }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5 text-sm text-amber-700 dark:text-amber-300">
+    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-muted-foreground">
       <Icon icon={Coins01Icon} className="size-4" />
-      <span className="font-semibold tabular-nums">{num.format(total)}</span> โทเคน
+      <span className="font-semibold text-foreground tabular-nums">{num.format(total)}</span> โทเคน
     </span>
   );
 }

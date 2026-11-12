@@ -114,7 +114,7 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
               </div>
             )}
             {order.tokens > 0 && (
-              <div className="flex justify-between gap-3 text-amber-600 dark:text-amber-400">
+              <div className="flex justify-between gap-3 text-muted-foreground">
                 <dt>ได้รับโทเคน{order.quantity > 1 ? ` (ใบละ ${(order.tokens / order.quantity).toLocaleString("th-TH")})` : ""}</dt>
                 <dd className="tabular-nums">+{order.tokens.toLocaleString("th-TH")}</dd>
               </div>

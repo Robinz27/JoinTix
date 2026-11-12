@@ -77,8 +77,8 @@ async function Profile({ searchParams }: Pick<PageProps<"/profile">, "searchPara
         </section>
 
         <div className="grid grid-cols-2 gap-3">
-          <section className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 sm:p-5">
-            <h2 className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <h2 className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon icon={Coins01Icon} className="size-4" />
               โทเคนคงเหลือ
             </h2>
@@ -107,7 +107,7 @@ async function Profile({ searchParams }: Pick<PageProps<"/profile">, "searchPara
                   <Link href={`/events/${t.slug}`} className="min-w-0 truncate text-foreground hover:underline">
                     {t.title}
                   </Link>
-                  <span className="shrink-0 font-medium text-amber-600 tabular-nums dark:text-amber-400">{t.balance.toLocaleString("th-TH")} โทเคน</span>
+                  <span className="shrink-0 font-medium text-foreground tabular-nums">{t.balance.toLocaleString("th-TH")} โทเคน</span>
                 </li>
               ))}
             </ul>
